@@ -1,8 +1,10 @@
+#include <cstring>
+#include <string>
+
 typedef struct CurrentState {
 	int timeInAir;
 	double latitude;
-	double longtitude;
-	bool armed;
+	double longitude;
 	float batteryVoltage;
 	float batteryRemaining;
 	float altitude;
@@ -15,8 +17,15 @@ typedef struct CurrentState {
 	double roll;
 	double pitch;
 	double yaw;
+	bool armed;
 } CurrentState;
 
-CurrentState* parseCurrentState(string input) {
-
-}
+/**
+ * Updates state to match input
+ *
+ * The return value contains the status code:
+ *	0 for success
+ *  1 for incorrect length
+ *  2 for invalid header
+ */
+int parseCurrentState(CurrentState* state, std::string input);
