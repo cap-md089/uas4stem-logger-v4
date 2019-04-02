@@ -1,26 +1,13 @@
-#include <gtk/gtk.h>
-#include "CurrentState.h"
-#include <iostream>
-#include <cstring>
+#pragma once
+#include "gui/main.h"
+#include "data/CurrentState.h"
+#include <vector>
 #include <string>
+#include <cstring>
 
-static void activate (GtkApplication* app, gpointer user_data) {
-	GtkWidget *window;
-
-	window = gtk_application_window_new (app);
-	gtk_window_set_title (GTK_WINDOW (window), "Window");
-	gtk_window_set_default_size (GTK_WINDOW (window), 200, 200);
-	gtk_widget_show_all (window);
-}
+std::vector<std::string> user_log;
+CurrentState cs;
 
 int main (int argc, char **argv) {
-	GtkApplication *app;
-	int status;
-
-	app = gtk_application_new("org.capmd089.uas4stemlogger", G_APPLICATION_FLAGS_NONE);
-	g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
-	status = g_application_run (G_APPLICATION (app), argc, argv);
-	g_object_unref (app);
-
-	return status;
+	return start_gui(argc, argv, &cs, &user_log);
 }

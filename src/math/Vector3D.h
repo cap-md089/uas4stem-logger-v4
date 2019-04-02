@@ -1,3 +1,6 @@
+#ifndef _VECTOR3D_H_
+#define _VECTOR3D_H_
+
 class Vector3D {
 	public:
 		Vector3D();
@@ -25,3 +28,5 @@ class VectorLine3D {
 		Vector3D* vec;
 		double offset;
 };
+
+#endif
