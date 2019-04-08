@@ -4,6 +4,8 @@
 
 #include <string>
 
+#define IDEAL_PACKET_SIZE 95
+
 class CurrentState {
 	public:
 		int get_time_in_air() const;
@@ -11,7 +13,7 @@ class CurrentState {
 		double get_longitude() const;
 		float get_battery_voltage() const;
 		float get_battery_remaining() const;
-		float get_altitude() const;
+		double get_altitude() const;
 		float get_ground_speed() const;
 		float get_throttle() const;
 		float get_dist_to_home() const;
@@ -28,6 +30,8 @@ class CurrentState {
 		int get_battery_timer() const;
 		bool get_continuing_flight() const;
 
+		void continue_flight();
+
 		/**
 		 * Updates state to match input
 		 *
@@ -37,6 +41,10 @@ class CurrentState {
 		 *  2 for invalid header
 		 */
 		int update(std::string input);
+
+		void (*flying_callback)(CurrentState*);
+		void (*landed_callback)(CurrentState*);
+		void (*update_callback)(CurrentState*);
 	private:
 		int time_in_air;
 		double latitude;
@@ -53,6 +61,7 @@ class CurrentState {
 		double roll;
 		double pitch;
 		double yaw;
+		float time_required_for_landing;
 
 		bool armed;
 

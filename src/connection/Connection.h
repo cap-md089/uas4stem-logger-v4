@@ -1,30 +1,46 @@
 #ifndef _CONNECTION_H_
 #define _CONNECTION_H_
 
+#include "../data/CurrentState.h"
 #include <thread>
-
-enum UAVBottles {
-	LEFT_BOTTLE,
-	RIGHT_BOTTLE
-};
+#include <winsock.h>
+#include <vector>
+#include <string>
+#include <chrono>
 
 class Connection {
 	public:
-		void is_connected();
+		/**
+		 * Commands that can be sent to the Python client
+		 */
 		void toggle_arm();
-		void open_container(UAVBottles target);
-		void close_container(UAVBottles target);
+		void open_charlie_bottle();
+		void close_charlie_bottle();
+		void open_golf_bottle();
+		void close_golf_bottle();
 
-		int get_packets_per_second();
+		/**
+		 * Nice for the operator to know how good the connection is
+		 */
+		double get_packets_per_second();
 
-		void start_thread(CurrentState* cs);
+		/**
+		 * Controls from the main thread to start and stop the connection client and server
+		 */
+		void setup(CurrentState* cs, std::vector<std::string>* log);
+		void stop();
 	private:
-		int udp_data_socket;
-		int tcp_command_socket;
+		SOCKET udp_data_socket;
+		SOCKET tcp_command_socket;
 
-		void thread_runner(CurrentState* cs);
+		void server_thread(CurrentState* cs, std::vector<std::string>* log);
+
+		void send_shutdown();
 
 		std::thread udp_thread;
+
+		unsigned int packet_count;
+		std::chrono::system_clock::time_point last_packet_clear;
 };
 
 #endif
