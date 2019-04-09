@@ -131,10 +131,10 @@ def serialize_current_state() :
 		(Script.GetParam('LAND_SPEED') + float(descent) + float(descent)) / 3
 	) / 100
 
-	packed = [67, 83, 69, 78, 68]
+	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<i<d<d<f<f<d<f<f<f<f<f<f<d<d<d<f<?",
-		cs.timeInAir,
+		"<iddffdffffffdddf?",
+		int(cs.timeInAir),
 		cs.lat,
 		cs.lng,
 		cs.battery_voltage,
@@ -153,14 +153,15 @@ def serialize_current_state() :
                                                                          if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'),
 		cs.armed
 	))
-	packed.extend([67, 83, 69, 78, 68])
+	packed.extend(['C', 'S', 'E', 'N', 'D'])
 
-	return packed
+	return ''.join(packed)
 
 sending = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 try :
-	thread.start_new_thread(receive_command_thread, tuple([]))
+	pass
+	#thread.start_new_thread(receive_command_thread, tuple([]))
 except Exception as e :
 	print "Thread error: {0}".format(e)
 

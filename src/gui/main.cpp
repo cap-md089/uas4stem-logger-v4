@@ -44,21 +44,35 @@ static void toggle_arm_button_click() {
 	dataConnection->toggle_arm();
 }
 
-static void current_state_update(CurrentState* cs) {
-	{
-		char coordinates_description[16];
-		sprintf(coordinates_description, "%2.6f, %2.6f", cs->get_latitude(), cs->get_longitude());
-		GtkLabel* coordinates_label = (GtkLabel*)gtk_builder_get_object(builder, "currentCoordinates");
-		gtk_label_set_text(coordinates_label, coordinates_description);
-	}
+static int update_coordinates_label(gpointer lbl) {
+	GtkLabel* coordinates_label = (GtkLabel*)lbl;
 
-	{
-		const gchar* armedLabel = "ARMED";
-		const gchar* unarmedLabel = "UNARMED";
-		bool is_armed = cs->get_armed();
-		GtkLabel* armed_label = (GtkLabel*)gtk_builder_get_object(builder, "armedStatus");
-		gtk_label_set_text(armed_label, is_armed ? armedLabel : unarmedLabel);
-	}
+	char coordinates_description[16];
+	sprintf(coordinates_description, "%2.6f, %2.6f", currentState->get_latitude(), currentState->get_longitude());
+	gtk_label_set_text(coordinates_label, coordinates_description);
+
+	return G_SOURCE_REMOVE;
+}
+
+static int update_armed_label(gpointer lbl) {
+	GtkLabel* armed_label = (GtkLabel*)lbl;
+
+	const gchar* armedLabel = "ARMED";
+	const gchar* unarmedLabel = "UNARMED";
+	bool is_armed = currentState->get_armed();
+	gtk_label_set_text(armed_label, is_armed ? armedLabel : unarmedLabel);
+
+	return G_SOURCE_REMOVE;
+}
+
+static void current_state_update(CurrentState* cs) {
+	GObject* obj;
+
+	obj = gtk_builder_get_object(builder, "armedStatus");
+	g_main_context_invoke(NULL, update_armed_label, obj);
+
+	obj = gtk_builder_get_object(builder, "currentCoordinates");
+	g_main_context_invoke(NULL, update_coordinates_label, obj);
 }
 
 int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>* log, Connection* conn) {

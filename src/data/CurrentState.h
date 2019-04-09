@@ -3,8 +3,14 @@
 #define _CURRENTSTATE_H_  
 
 #include <string>
+#include <vector>
 
-#define IDEAL_PACKET_SIZE 95
+#define IDEAL_PACKET_SIZE 99
+
+typedef struct RecordedCoordinates {
+	double latitude;
+	double longitude;
+} RecordedCoordinates;
 
 class CurrentState {
 	public:
@@ -31,6 +37,10 @@ class CurrentState {
 		bool get_continuing_flight() const;
 
 		void continue_flight();
+
+		bool get_recording();
+		void start_recording(float left_percent, float right_percent);
+		RecordedCoordinates* stop_recording();
 
 		/**
 		 * Updates state to match input
@@ -68,6 +78,11 @@ class CurrentState {
 		bool flying;
 		int battery_timer;
 		bool continuing_flight;
+
+		bool recording_coordinates;
+		float left_percent;
+		float right_percent;
+		std::vector<RecordedCoordinates*> coordinates_being_recorded;
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include "CurrentState.h"
+#include "../math/Vector3D.h"
 #include <stdlib.h>
 #include <string>
 #include <cstring>
@@ -20,7 +21,7 @@ int CurrentState::update(std::string input) {
 
 	if (
 		std::memcmp(input_data,			header, 5) != 0 ||
-		std::memcmp(input_data + 0x59,	footer, 5) != 0
+		std::memcmp(input_data + 0x5E,	footer, 5) != 0
 	) {
 		return 2;
 	}
@@ -61,6 +62,23 @@ int CurrentState::update(std::string input) {
 	}
 
 	if (update_callback != nullptr) (*update_callback)(this);
+
+	if (recording_coordinates) {
+		double x, y;
+
+		get_xy_view_of_uav(
+			&x, &y,
+			roll, pitch, yaw,
+			altitude,
+			latitude, longitude
+		);
+
+		RecordedCoordinates* rec = (RecordedCoordinates*)malloc(sizeof(RecordedCoordinates));
+		rec->latitude = x;
+		rec->longitude = y;
+
+		coordinates_being_recorded.push_back(rec);
+	}
 
 	return 0;
 }
@@ -143,4 +161,44 @@ bool CurrentState::get_continuing_flight() const {
 
 void CurrentState::continue_flight() {
 	continuing_flight = true;
+}
+
+bool CurrentState::get_recording() {
+	return recording_coordinates;
+}
+
+void CurrentState::start_recording(float lp, float rp) {
+	recording_coordinates = true;
+	left_percent = lp;
+	right_percent = rp;
+}
+
+RecordedCoordinates* CurrentState::stop_recording() {
+	RecordedCoordinates* returnValue = (RecordedCoordinates*)malloc(sizeof(RecordedCoordinates));
+
+	double x = 0, y = 0;
+
+	if (coordinates_being_recorded.size() != 0) {
+		for (unsigned int i = 0; i < coordinates_being_recorded.size(); i++) {
+			RecordedCoordinates* record = coordinates_being_recorded.at(i);
+
+			x += record->latitude;
+			y += record->longitude;
+
+			free(record);
+		}
+
+		x /= coordinates_being_recorded.size();
+		y /= coordinates_being_recorded.size();
+	}
+
+	coordinates_being_recorded.erase(
+		coordinates_being_recorded.begin(),
+		coordinates_being_recorded.end()
+	);
+
+	returnValue->latitude = x;
+	returnValue->longitude = y;
+
+	return returnValue;
 }

@@ -29,4 +29,10 @@ class VectorLine3D {
 		double offset;
 };
 
+void get_xy_view_of_uav(
+	double* x, double* y,
+	double pitch, double roll, double yaw,
+	double lat, double lng
+);
+
 #endif
