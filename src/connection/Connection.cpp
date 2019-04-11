@@ -128,9 +128,7 @@ void Connection::server_thread(CurrentState* cs, std::vector<std::string>* log) 
 	char buffer[IDEAL_PACKET_SIZE] = { 0 };
 	std::string buffer_as_string, buffer2, buffer3;
 
-	std::cout << "Got here to starting thread" << std::endl;
-
-	while (1) {
+	while (!should_stop) {
 		recvfrom(udp_data_socket, buffer, sizeof(buffer), 0, (SOCKADDR*)&client_address, &client_addr_size);
 
 		buffer_as_string = std::string(buffer, IDEAL_PACKET_SIZE);
@@ -140,23 +138,13 @@ void Connection::server_thread(CurrentState* cs, std::vector<std::string>* log) 
 		int update_status = cs->update(buffer_as_string);
 
 		if (update_status != 0) {
-			int i;
-			for (i = 0; i < IDEAL_PACKET_SIZE; i++) {
-				if (*(buffer + i)) {
-					printf("(%#2X: %#2X)", i, *(buffer + i));
-				}
-			}
-			printf("\n\n\n");
-			//std::cout << "Invalid packet received; error code " << update_status << std::endl;
+			std::cout << "Invalid packet received; error code " << update_status << std::endl;
 		}	
 
 		packet_count++;
 
-		usleep(8333);
+		usleep(8000);
 	}
-
-	std::cout << WSAGetLastError() << std::endl;
-	std::cout << "Invalid socket, ended" << std::endl;
 }
 
 void Connection::stop() {
@@ -166,6 +154,7 @@ void Connection::stop() {
 	WSACleanup();
 
 	// Close incoming channel
+	should_stop = true;
 	shutdown(udp_data_socket, 2);
 	close(udp_data_socket);
 	udp_thread.join();

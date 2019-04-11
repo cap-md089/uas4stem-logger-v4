@@ -41,6 +41,8 @@ class Connection {
 
 		unsigned int packet_count;
 		std::chrono::system_clock::time_point last_packet_clear;
+
+		bool should_stop;
 };
 
 #endif

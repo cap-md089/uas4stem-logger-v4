@@ -77,6 +77,9 @@ int CurrentState::update(std::string input) {
 		rec->latitude = x;
 		rec->longitude = y;
 
+		latitude = x;
+		longitude = y;
+
 		coordinates_being_recorded.push_back(rec);
 	}
 

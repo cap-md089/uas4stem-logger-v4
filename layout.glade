@@ -35,13 +35,10 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkTextView" id="voltageData">
+                <property name="width_request">120</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="margin_right">137</property>
                 <property name="editable">False</property>
-                <style>
-                  <class name="blackborder1px"/>
-                </style>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -55,6 +52,7 @@
                 <property name="can_focus">False</property>
                 <property name="margin_right">259</property>
                 <property name="orientation">vertical</property>
+                <property name="spacing">10</property>
                 <child>
                   <object class="GtkLabel" id="cameraSize">
                     <property name="visible">True</property>
@@ -80,7 +78,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">0</property>
+                        <property name="position">1</property>
                       </packing>
                     </child>
                     <child>
@@ -99,7 +97,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                   </object>
@@ -107,6 +105,78 @@
                     <property name="expand">False</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox" id="targetPosition">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkLabel" id="targetPositionLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xpad">15</property>
+                        <property name="label" translatable="yes">Target position: </property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="targetPositionX">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="active">4</property>
+                        <property name="entry_text_column">0</property>
+                        <property name="id_column">1</property>
+                        <items>
+                          <item translatable="yes">A</item>
+                          <item translatable="yes">B</item>
+                          <item translatable="yes">C</item>
+                          <item translatable="yes">D</item>
+                          <item translatable="yes">E</item>
+                          <item translatable="yes">F</item>
+                          <item translatable="yes">G</item>
+                          <item translatable="yes">H</item>
+                          <item translatable="yes">I</item>
+                        </items>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="targetPositionY">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="active">3</property>
+                        <property name="entry_text_column">0</property>
+                        <property name="id_column">1</property>
+                        <items>
+                          <item translatable="yes">1</item>
+                          <item translatable="yes">2</item>
+                          <item translatable="yes">3</item>
+                          <item translatable="yes">4</item>
+                          <item translatable="yes">5</item>
+                          <item translatable="yes">6</item>
+                          <item translatable="yes">7</item>
+                        </items>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
                 <child>
@@ -119,7 +189,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">2</property>
+                    <property name="position">3</property>
                   </packing>
                 </child>
                 <child>
@@ -131,7 +201,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">3</property>
+                    <property name="position">4</property>
                   </packing>
                 </child>
                 <child>
@@ -143,7 +213,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">4</property>
+                    <property name="position">5</property>
                   </packing>
                 </child>
                 <child>
@@ -154,7 +224,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">5</property>
+                    <property name="position">6</property>
                   </packing>
                 </child>
                 <child>
@@ -166,7 +236,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">6</property>
+                    <property name="position">7</property>
                   </packing>
                 </child>
                 <child>
@@ -179,7 +249,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">7</property>
+                    <property name="position">8</property>
                   </packing>
                 </child>
                 <child>
@@ -191,7 +261,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">8</property>
+                    <property name="position">9</property>
                   </packing>
                 </child>
                 <child>
@@ -264,7 +334,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">9</property>
+                    <property name="position">10</property>
                   </packing>
                 </child>
                 <child>
@@ -315,7 +385,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">10</property>
+                    <property name="position">11</property>
                   </packing>
                 </child>
                 <child>
@@ -361,7 +431,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">11</property>
+                    <property name="position">12</property>
                   </packing>
                 </child>
                 <child>
@@ -374,7 +444,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">12</property>
+                    <property name="position">13</property>
                   </packing>
                 </child>
                 <child>
@@ -389,7 +459,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">13</property>
+                    <property name="position">14</property>
                   </packing>
                 </child>
               </object>
@@ -412,104 +482,20 @@
           </packing>
         </child>
         <child>
-          <object class="GtkGrid" id="configurationMenu">
+          <object class="GtkBox" id="configurationMenu">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
             <child>
-              <object class="GtkLabel" id="resultLocationLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="xpad">15</property>
-                <property name="ypad">10</property>
-                <property name="label" translatable="yes">Location to store results</property>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">0</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="maxFlightTimeLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="xpad">15</property>
-                <property name="ypad">10</property>
-                <property name="label" translatable="yes">Max Flight Time</property>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">1</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="cameraCalculationAltitudeInput">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="xpad">15</property>
-                <property name="ypad">10</property>
-                <property name="label" translatable="yes">Altitude for camera calculations</property>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">2</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="cameraCalculationOutput">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="xpad">15</property>
-                <property name="ypad">10</property>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">3</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="entry2">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="invisible_char">●</property>
-              </object>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="top_attach">1</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="cameraCalculationInput">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="invisible_char">●</property>
-              </object>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="top_attach">2</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkBox" id="dataStoreLocation">
+              <object class="GtkBox" id="dataFolder">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkButton" id="selectFileLocationButton">
-                    <property name="label" translatable="yes">Select file</property>
+                  <object class="GtkLabel" id="dataFolderLabel">
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="xpad">15</property>
+                    <property name="label" translatable="yes">Data folder to store information</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -518,7 +504,119 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="selectFileLocationResult">
+                  <object class="GtkButton" id="selectDataFolder">
+                    <property name="label" translatable="yes">Select location</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="dataFolderDisplay">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="xpad">15</property>
+                    <property name="ypad">10</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox" id="maxFlightTime">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkLabel" id="maxFlightTimeLabel">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="xpad">15</property>
+                    <property name="ypad">10</property>
+                    <property name="label" translatable="yes">Max flight time</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="maxFlightTimeEntry">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="invisible_char">●</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox" id="altitudeCheck">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkBox" id="altitudeCheckInput">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkLabel" id="altitudeCheckLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xpad">15</property>
+                        <property name="ypad">10</property>
+                        <property name="label" translatable="yes">Enter altitude:</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="altitudeCheckEntry">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="altitudeCheckOutput">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                   </object>
@@ -530,23 +628,9 @@
                 </child>
               </object>
               <packing>
-                <property name="left_attach">1</property>
-                <property name="top_attach">0</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="filler1">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="xalign">0.50999999046325684</property>
-              </object>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="top_attach">3</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
               </packing>
             </child>
           </object>
@@ -569,13 +653,32 @@
           <placeholder/>
         </child>
         <child type="tab">
+          <placeholder/>
+        </child>
+        <child>
+          <object class="GtkBox" id="box2">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="position">3</property>
+          </packing>
+        </child>
+        <child type="tab">
           <object class="GtkLabel" id="setupLbl">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="label" translatable="yes">Setup</property>
           </object>
           <packing>
-            <property name="position">2</property>
+            <property name="position">3</property>
             <property name="tab_fill">False</property>
           </packing>
         </child>
@@ -635,7 +738,7 @@
             </child>
           </object>
           <packing>
-            <property name="position">3</property>
+            <property name="position">4</property>
           </packing>
         </child>
         <child type="tab">
@@ -645,7 +748,7 @@
             <property name="label" translatable="yes">Scrabble</property>
           </object>
           <packing>
-            <property name="position">3</property>
+            <property name="position">4</property>
             <property name="tab_fill">False</property>
           </packing>
         </child>

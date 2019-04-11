@@ -80,6 +80,11 @@ def receive_command_thread() :
 			print "Shutting down"
 			shutdown = True
 
+		if func == 4 :
+			# Maybe auto open a file specified, for the setup?
+			# Will need to pass a file path for that...
+			pass
+
 	server.close()
 	print "Server gone. Good bye, client"
 
