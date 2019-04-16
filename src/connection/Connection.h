@@ -18,6 +18,8 @@ class Connection {
 		void close_charlie_bottle();
 		void open_golf_bottle();
 		void close_golf_bottle();
+		void send_rtl();
+		void send_auto();
 
 		/**
 		 * Nice for the operator to know how good the connection is

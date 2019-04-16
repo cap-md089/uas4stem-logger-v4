@@ -4,7 +4,6 @@ import sys
 
 print "SYS libraries imported"
 
-
 sys.path.extend([
     "E:\\Python27",
     "E:\\Python27\\DLLs",
@@ -52,6 +51,8 @@ def receive_command_thread() :
 
 	conn, addr = server.accept()
 
+	print "Has connection"
+
 	while not shutdown :
 		incoming_packet_size = conn.recv(1)
 		size = ord(incoming_packet_size[0])
@@ -84,6 +85,12 @@ def receive_command_thread() :
 			# Maybe auto open a file specified, for the setup?
 			# Will need to pass a file path for that...
 			pass
+
+		if func == 5 :
+			Script.ChangeMode('RTL')
+
+		if func == 6 :
+			Script.ChangeMode('AUTO')
 
 	server.close()
 	print "Server gone. Good bye, client"
@@ -164,9 +171,11 @@ def serialize_current_state() :
 
 sending = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+receiving = True
+
 try :
-	pass
-	#thread.start_new_thread(receive_command_thread, tuple([]))
+	if receiving :
+		thread.start_new_thread(receive_command_thread, tuple([]))
 except Exception as e :
 	print "Thread error: {0}".format(e)
 

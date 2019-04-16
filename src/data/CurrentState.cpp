@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string>
 #include <cstring>
+#include <stdio.h>
+#include <iostream>
 
 const char header[5] = {
 	'C', 'S', 'D', 'A', 'T'
@@ -28,23 +30,23 @@ int CurrentState::update(std::string input) {
 
 	input_data += 5;
 
-	std::memcpy(&time_in_air,			input_data,			4);
-	std::memcpy(&latitude,				input_data + 0x04,	8);
-	std::memcpy(&longitude,				input_data + 0x0C,	8);
-	std::memcpy(&battery_voltage,		input_data + 0x14,	4);
-	std::memcpy(&battery_remaining,		input_data + 0x18,	4);
-	std::memcpy(&altitude,				input_data + 0x1C,	8);
-	std::memcpy(&ground_speed,			input_data + 0x24,	4);
-	std::memcpy(&throttle,				input_data + 0x28,	4);
-	std::memcpy(&dist_to_home,			input_data + 0x2C,	4);
-	std::memcpy(&vertical_speed,		input_data + 0x30,	4);
-	std::memcpy(&rtl_speed,				input_data + 0x34,	4);
-	std::memcpy(&rtl_land_speed,		input_data + 0x38,	4);
-	std::memcpy(&roll,					input_data + 0x3C,	8);
-	std::memcpy(&pitch,					input_data + 0x44,	8);
-	std::memcpy(&yaw,					input_data + 0x4C,	8);
-	std::memcpy(&yaw,					input_data + 0x54,	4);
-	std::memcpy(&armed,					input_data + 0x58,	1);
+	std::memcpy(&time_in_air,					input_data,			4);
+	std::memcpy(&latitude,						input_data + 0x04,	8);
+	std::memcpy(&longitude,						input_data + 0x0C,	8);
+	std::memcpy(&battery_voltage,				input_data + 0x14,	4);
+	std::memcpy(&battery_remaining,				input_data + 0x18,	4);
+	std::memcpy(&altitude,						input_data + 0x1C,	8);
+	std::memcpy(&ground_speed,					input_data + 0x24,	4);
+	std::memcpy(&throttle,						input_data + 0x28,	4);
+	std::memcpy(&dist_to_home,					input_data + 0x2C,	4);
+	std::memcpy(&vertical_speed,				input_data + 0x30,	4);
+	std::memcpy(&rtl_speed,						input_data + 0x34,	4);
+	std::memcpy(&rtl_land_speed,				input_data + 0x38,	4);
+	std::memcpy(&roll,							input_data + 0x3C,	8);
+	std::memcpy(&yaw,							input_data + 0x44,	8);
+	std::memcpy(&pitch,							input_data + 0x4C,	8);
+	std::memcpy(&time_required_for_landing,		input_data + 0x54,	4);
+	std::memcpy(&armed,							input_data + 0x58,	1);
 
 	if (
 		(throttle > 12 || ground_speed > 3) &&
@@ -58,7 +60,18 @@ int CurrentState::update(std::string input) {
 		flying
 	) {
 		flying = false;
-		if (landed_callback != nullptr) (*landed_callback)(this);
+		if (landed_callback != nullptr) (*landed_callback)(this, continuing_flight);
+
+		if (continuing_flight) {
+			std::cout << "Consuming continue flight" << std::endl;
+			std::cout << "Previous time in air: " << previous_time_in_air << std::endl;
+			previous_time_in_air += time_in_air;
+			std::cout << "New previous time in air: " << previous_time_in_air << std::endl;
+			continuing_flight = false;
+		} else {
+			std::cout << "Wasn't continuing flight, resetting" << std::endl;
+			previous_time_in_air = 0;
+		}
 	}
 
 	if (update_callback != nullptr) (*update_callback)(this);
@@ -70,7 +83,8 @@ int CurrentState::update(std::string input) {
 			&x, &y,
 			roll, pitch, yaw,
 			altitude,
-			latitude, longitude
+			latitude, longitude,
+			(double)left_percent, (double)right_percent
 		);
 
 		RecordedCoordinates* rec = (RecordedCoordinates*)malloc(sizeof(RecordedCoordinates));
@@ -86,7 +100,7 @@ int CurrentState::update(std::string input) {
 	return 0;
 }
 
-int CurrentState::get_time_in_air() const {
+unsigned int CurrentState::get_time_in_air() const {
 	return time_in_air;
 }
 
@@ -155,15 +169,20 @@ bool CurrentState::get_flying() const {
 }
 
 int CurrentState::get_battery_timer() const {
-	return battery_timer;
+	return previous_time_in_air + time_in_air;
 }
 
 bool CurrentState::get_continuing_flight() const {
 	return continuing_flight;
 }
 
+float CurrentState::get_time_required_for_landing() const {
+	return time_required_for_landing;
+}
+
 void CurrentState::continue_flight() {
 	continuing_flight = true;
+	std::cout << "Continuing flight: set" << std::endl;
 }
 
 bool CurrentState::get_recording() {

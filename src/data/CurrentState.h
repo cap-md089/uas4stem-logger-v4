@@ -14,7 +14,7 @@ typedef struct RecordedCoordinates {
 
 class CurrentState {
 	public:
-		int get_time_in_air() const;
+		unsigned int get_time_in_air() const;
 		double get_latitude() const;
 		double get_longitude() const;
 		float get_battery_voltage() const;
@@ -29,6 +29,7 @@ class CurrentState {
 		double get_roll() const;
 		double get_pitch() const;
 		double get_yaw() const;
+		float get_time_required_for_landing() const;
 
 		bool get_armed() const;
 
@@ -53,10 +54,11 @@ class CurrentState {
 		int update(std::string input);
 
 		void (*flying_callback)(CurrentState*);
-		void (*landed_callback)(CurrentState*);
+		void (*landed_callback)(CurrentState*, bool);
 		void (*update_callback)(CurrentState*);
 	private:
-		int time_in_air;
+		unsigned int previous_time_in_air = 0;
+		unsigned int time_in_air;
 		double latitude;
 		double longitude;
 		float battery_voltage;
@@ -76,7 +78,6 @@ class CurrentState {
 		bool armed;
 
 		bool flying;
-		int battery_timer;
 		bool continuing_flight;
 
 		bool recording_coordinates;

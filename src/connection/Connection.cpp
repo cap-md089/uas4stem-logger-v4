@@ -1,7 +1,11 @@
 #include "Connection.h"
 #include "../data/CurrentState.h"
 #include <thread>
+#ifdef _WIN32
 #include <winsock.h>
+#else
+#include <sys/socket.h>
+#endif
 #include <string>
 #include <vector>
 #include <chrono>
@@ -57,6 +61,20 @@ void Connection::send_shutdown() {
 #endif
 }
 
+void Connection::send_rtl() {
+#if CAN_SEND_COMMANDS == 1
+	char command[2] = { 1, 5 };
+	send(tcp_command_socket, command, 2, 0);
+#endif
+}
+
+void Connection::send_auto() {
+#if CAN_SEND_COMMANDS == 1
+	char command[2] = { 1, 6 };
+	send(tcp_command_socket, command, 2, 0);
+#endif
+}
+
 double Connection::get_packets_per_second() {
 	std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
 	std::chrono::duration<double, std::milli> diff = timestamp - last_packet_clear;
@@ -64,7 +82,7 @@ double Connection::get_packets_per_second() {
 	double millis = diff.count();
 	double pps = millis == 0 ? 0 : (packet_count / millis);
 	
-	if (std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() > 10) {
+	if (std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() > 1000) {
 		packet_count = 0;
 		last_packet_clear = timestamp;
 	}
@@ -73,12 +91,14 @@ double Connection::get_packets_per_second() {
 }
 
 void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
+#ifdef _WIN32
 	WSADATA winblows_data;
 	WSAStartup(MAKEWORD(2, 0), &winblows_data);
+#endif
 
 	// Prepare a connection to listen for UDP from the Python client
 	{
-		SOCKADDR_IN server_address;
+		sockaddr_in server_address;
 
 		if ((udp_data_socket = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
 			perror("Socket creation failed");
@@ -89,7 +109,7 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		server_address.sin_addr.s_addr = INADDR_ANY;
 		server_address.sin_port = htons(SERVER_PORT);
 
-		if (bind(udp_data_socket, (SOCKADDR*)&server_address, sizeof(server_address))) {
+		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
 			fprintf(stderr, "Could not bind socket");
 			closesocket(udp_data_socket);
 			WSACleanup();
@@ -105,7 +125,7 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 #if CAN_SEND_COMMANDS == 1
 	// Make a connection to the Python server
 	{
-		SOCKADDR_IN client_address;
+		sockaddr_in client_address;
 
 		tcp_command_socket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -113,15 +133,21 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		client_address.sin_family = AF_INET;
 		client_address.sin_port = htons(CLIENT_PORT);
 
-		// Just leave the connection hanging
+		// Just leave the connection open
 		// We can close it later when we close down in Connection::close
-		connect(tcp_command_socket, (SOCKADDR*)&client_address, sizeof(client_address));
+		int status = connect(tcp_command_socket, (sockaddr*)&client_address, sizeof(client_address));
+
+		if (status == -1) {
+#ifdef _WIN32
+			std::cout << "Connect error: " << WSAGetLastError() << std::endl;
+#endif
+		}
 	}
 #endif
 }
 
 void Connection::server_thread(CurrentState* cs, std::vector<std::string>* log) {
-	SOCKADDR_IN client_address;
+	sockaddr_in client_address;
 
 	int client_addr_size = sizeof(client_address);
 
@@ -129,7 +155,7 @@ void Connection::server_thread(CurrentState* cs, std::vector<std::string>* log) 
 	std::string buffer_as_string, buffer2, buffer3;
 
 	while (!should_stop) {
-		recvfrom(udp_data_socket, buffer, sizeof(buffer), 0, (SOCKADDR*)&client_address, &client_addr_size);
+		recvfrom(udp_data_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_addr_size);
 
 		buffer_as_string = std::string(buffer, IDEAL_PACKET_SIZE);
 		buffer2 = std::string(buffer + 0x59, 5);
@@ -151,7 +177,9 @@ void Connection::stop() {
 	// Close outgoing channel
 	send_shutdown();
 	closesocket(tcp_command_socket);
+#ifdef _WIN32
 	WSACleanup();
+#endif
 
 	// Close incoming channel
 	should_stop = true;

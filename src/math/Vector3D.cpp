@@ -50,7 +50,8 @@ void get_xy_view_of_uav(
 	double* x, double* y,
 	double pitch, double roll, double yaw,
 	double altitude,
-	double lat, double lng
+	double lat, double lng,
+	double left, double right
 ) {
 	*x = lat;
 	*y = lng;
