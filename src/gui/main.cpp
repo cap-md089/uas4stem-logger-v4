@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "../data/CurrentState.h"
+#include "../data/Session.h"
 #include "../connection/Connection.h"
 #include <gdk/gdk.h>
 #include <iostream>
@@ -12,6 +13,9 @@
 static Connection* dataConnection;
 static CurrentState* currentState;
 static Configuration* config;
+static CurrentFlight flight;
+static CurrentFlight overall_flight;
+
 static GtkBuilder* builder;
 
 static std::vector<double> voltages;
@@ -30,10 +34,21 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 	//if (memcmp(currentLabel, startLabel, 3)) {
 		gtk_button_set_label(button, startLabel);
 		RecordedCoordinates* recorded = currentState->stop_recording();
-	
-		char coordinates_description[24];
-		sprintf(coordinates_description, "%2.6f, %2.6f", recorded->latitude, recorded->longitude);
 
+		std::string target_description = std::string(gtk_entry_get_text(current_target));
+
+		RecordedTarget* target = (RecordedTarget*)malloc(sizeof(RecordedTarget));
+
+		target->latitude = recorded->latitude;
+		target->longitude = recorded->longitude;
+		target->time_in_air = currentState->get_time_in_air();
+		target->description = target_description;
+
+		flight.targets.push_back(target);
+		overall_flight.targets.push_back(target);
+
+		char coordinates_description[48];
+		sprintf(coordinates_description, "%2.6f, %2.6f", recorded->latitude, recorded->longitude);
 		gtk_label_set_text(recorded_coordinates_label, coordinates_description);
 	} else {
 		GtkComboBox* targetX = (GtkComboBox*)gtk_builder_get_object(builder, "targetPositionX");
@@ -92,8 +107,8 @@ static int update_voltage_display(gpointer box) {
 	GtkTextView* voltage_box = (GtkTextView*)box;
 
 	if (currentState->get_flying()) {
-		char newtext[10];
-		sprintf(newtext, "%2.4f\n", currentState->get_battery_voltage());
+		char newtext[20];
+		sprintf(newtext, "%2.3f\n", currentState->get_battery_voltage());
 
 		GtkTextIter start_position, end_position;
 		GtkTextBuffer* buffer = gtk_text_view_get_buffer(voltage_box);
@@ -113,7 +128,7 @@ static int update_voltage_display(gpointer box) {
 static int update_packets_per_second(gpointer lbl) {
 	GtkLabel* pps_label = (GtkLabel*)lbl;
 
-	char packets_per_second_text[10];
+	char packets_per_second_text[20];
 	sprintf(packets_per_second_text, "%6.2f", dataConnection->get_packets_per_second());
 	gtk_label_set_text(pps_label, packets_per_second_text);
 
@@ -123,7 +138,7 @@ static int update_packets_per_second(gpointer lbl) {
 static int update_coordinates_label(gpointer lbl) {
 	GtkLabel* coordinates_label = (GtkLabel*)lbl;
 
-	char coordinates_description[24];
+	char coordinates_description[48];
 	sprintf(coordinates_description, "%2.6f, %2.6f", currentState->get_latitude(), currentState->get_longitude());
 	gtk_label_set_text(coordinates_label, coordinates_description);
 
@@ -144,7 +159,7 @@ static int update_armed_label(gpointer lbl) {
 static int update_time_descriptions(gpointer lbl) {
 	GtkTextView* time_descriptions_box = (GtkTextView*)lbl;
 
-	char time_description_text[66]; 
+	char time_description_text[74]; 
 	unsigned int time_in_air = currentState->get_battery_timer();
 	unsigned int max_time = config->get_max_flight_time();
 	unsigned int time_left = max_time - time_in_air;
@@ -173,6 +188,9 @@ static void current_state_update(CurrentState* cs) {
 	obj = gtk_builder_get_object(builder, "currentCoordinates");
 	g_main_context_invoke(NULL, update_coordinates_label, obj);
 
+	obj = gtk_builder_get_object(builder, "timeDescriptions");
+	g_main_context_invoke(NULL, update_time_descriptions, obj);
+
 	if (!checking_voltage && cs->get_flying()) {
 		obj = gtk_builder_get_object(builder, "voltageData");
 		update_voltage_display((gpointer)obj);
@@ -180,9 +198,9 @@ static void current_state_update(CurrentState* cs) {
 
 		checking_voltage = true;
 	}
+}
 
-	obj = gtk_builder_get_object(builder, "timeDescriptions");
-	g_main_context_invoke(NULL, update_time_descriptions, obj);
+static void start_flying(CurrentState* cs) {
 }
 
 static int stop_flying_label(gpointer lbl) {
@@ -198,14 +216,28 @@ static int stop_flying_label(gpointer lbl) {
 static void stop_flying(CurrentState* cs, bool continued) {
 	GObject* obj;
 
+	std::cout << "stopped flight" << std::endl;
 	obj = gtk_builder_get_object(builder, "flightContinueStatus");
 	g_main_context_invoke(NULL, stop_flying_label, obj);
+
+	std::cout << "saving flight" << std::endl;
+	obj = gtk_builder_get_object(builder, "batterySelectID");
+	save_flight(
+		config,
+		&flight,
+		cs->get_battery_timer(),
+		gtk_combo_box_get_active((GtkComboBox*)obj)
+	);
+	std::cout << "saved flight" << std::endl;
+
+	clear_flight(&flight);
 }
 
 int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>* log, Connection* conn, Configuration* conf) {
 	dataConnection = conn;
 	currentState = cs;
 	config = conf;
+	clear_flight(&flight);
 
 	GObject* window;
 	GObject* obj;
@@ -255,6 +287,7 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 
 	currentState->update_callback = &current_state_update;
 	currentState->landed_callback = &stop_flying;
+	currentState->flying_callback = &start_flying;
 
 	gtk_widget_show_all((GtkWidget*)window);
 

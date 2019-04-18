@@ -18,18 +18,4 @@ int start_gui (
 	Configuration*
 );
 
-typedef struct RecordedTarget {
-	double latitude;
-	double longitude;
-	std::string description;
-	int time_in_air;
-} RecordedTarget;
-
-typedef struct CurrentFlight {
-	std::vector<RecordedTarget> targets;
-	std::vector<double> battery_voltages;
-	int time_in_air;
-	int battery_id;
-} CurrentFlight;
-
 #endif
