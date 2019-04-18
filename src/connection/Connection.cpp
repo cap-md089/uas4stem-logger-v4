@@ -1,77 +1,99 @@
 #include "Connection.h"
 #include "../data/CurrentState.h"
 #include <thread>
+#include <string>
+#include <vector>
+#include <chrono>
+#include <unistd.h>
+#include <stdlib.h>
+#include <cstring>
+#include <stdio.h>
+#include <iostream>
+
 #ifdef _WIN32
 #include <winsock.h>
 #else
 #include <sys/socket.h>
 #endif
-#include <string>
-#include <vector>
-#include <chrono>
-#include <unistd.h>
-
-#include <iostream>
-#include <stdio.h>
 
 #define CLIENT_PORT 1337
 #define SERVER_PORT 54248
 
 #define CAN_SEND_COMMANDS 1
 
+const char header[5] = {
+	'C', 'S', 'D', 'A', 'T'
+};
+
 void Connection::open_charlie_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 5, 1 };
-	send(tcp_command_socket, command, 4, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 4, 0);
+	}
 #endif
 }
 
 void Connection::close_charlie_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 5, 2 };
-	send(tcp_command_socket, command, 4, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 4, 0);
+	}
 #endif
 }
 
 void Connection::open_golf_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 6, 1 };
-	send(tcp_command_socket, command, 4, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 4, 0);
+	}
 #endif
 }
 
 void Connection::close_golf_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 6, 2 };
-	send(tcp_command_socket, command, 4, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 4, 0);
+	}
 #endif
 }
 
 void Connection::toggle_arm() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 2 };
-	send(tcp_command_socket, command, 2, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 2, 0);
+	}
 #endif
 }
 
 void Connection::send_shutdown() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 3 };
-	send(tcp_command_socket, command, 2, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 2, 0);
+	}
 #endif
 }
 
 void Connection::send_rtl() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 5 };
-	send(tcp_command_socket, command, 2, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 2, 0);
+	}
 #endif
 }
 
 void Connection::send_auto() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 6 };
-	send(tcp_command_socket, command, 2, 0);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, 2, 0);
+	}
 #endif
 }
 
@@ -96,6 +118,8 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 	WSAStartup(MAKEWORD(2, 0), &winblows_data);
 #endif
 
+	should_stop = false;
+
 	// Prepare a connection to listen for UDP from the Python client
 	{
 		sockaddr_in server_address;
@@ -119,49 +143,39 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		listen(udp_data_socket, 5);
 	}
 
-	// Start the server for the Python client
-	udp_thread = std::thread(&Connection::server_thread, this, cs, log);
-
 #if CAN_SEND_COMMANDS == 1
 	// Make a connection to the Python server
-	{
-		sockaddr_in client_address;
-
-		tcp_command_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-		client_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-		client_address.sin_family = AF_INET;
-		client_address.sin_port = htons(CLIENT_PORT);
-
-		// Just leave the connection open
-		// We can close it later when we close down in Connection::close
-		int status = connect(tcp_command_socket, (sockaddr*)&client_address, sizeof(client_address));
-
-		if (status == -1) {
-#ifdef _WIN32
-			std::cout << "Connect error: " << WSAGetLastError() << std::endl;
+	tcp_is_open = false;
+	tcp_thread = std::thread(&Connection::python_client_connect, this);
 #endif
-		}
-	}
-#endif
+
+	// Start the server for the Python client
+	// DO NOT REMOVE THE `THIS`
+	// C++ will then create a local variable (???) throwing terminates as the variable is dereferenced??
+	this->udp_thread = std::thread(&Connection::udp_server_listen, this, cs);
 }
 
-void Connection::server_thread(CurrentState* cs, std::vector<std::string>* log) {
+void Connection::udp_server_listen(CurrentState* cs) {
 	sockaddr_in client_address;
 
 	int client_addr_size = sizeof(client_address);
 
-	char buffer[IDEAL_PACKET_SIZE] = { 0 };
-	std::string buffer_as_string, buffer2, buffer3;
-
+	char buffer[IDEAL_PACKET_SIZE * 2] = { 0 };
+	int i = 0;
+	std::string buffer_as_string;
 	while (!should_stop) {
-		recvfrom(udp_data_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_addr_size);
+		recvfrom(udp_data_socket, buffer, IDEAL_PACKET_SIZE * 2, 0, (sockaddr*)&client_address, &client_addr_size);
 
-		buffer_as_string = std::string(buffer, IDEAL_PACKET_SIZE);
-		buffer2 = std::string(buffer + 0x59, 5);
-		buffer3 = std::string(buffer + 0x65, 5);
+		while (
+			(buffer + i) < (buffer + IDEAL_PACKET_SIZE) &&
+			std::memcmp((buffer + i), header, 5) != 0
+		) {
+			i++;
+		}
 
-		int update_status = cs->update(buffer_as_string);
+		buffer_as_string = std::string((buffer + i), IDEAL_PACKET_SIZE);
+
+		int update_status = cs->update(buffer + i, IDEAL_PACKET_SIZE);
 
 		if (update_status != 0) {
 			std::cout << "Invalid packet received; error code " << update_status << std::endl;
@@ -173,13 +187,44 @@ void Connection::server_thread(CurrentState* cs, std::vector<std::string>* log) 
 	}
 }
 
+void Connection::python_client_connect() {
+	sockaddr_in client_address;
+
+	tcp_command_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+	client_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+	client_address.sin_family = AF_INET;
+	client_address.sin_port = htons(CLIENT_PORT);
+
+	int status = -1;
+
+	// Just leave the connection open
+	// We can close it later when we close down in Connection::close
+	while (status != 0) {
+		status = connect(tcp_command_socket, (sockaddr*)&client_address, sizeof(client_address));
+
+		if (status == -1) {
+#ifdef _WIN32
+			std::cout << "Connect error: " << WSAGetLastError() << std::endl;
+#endif
+			usleep(5000000);
+		}
+	}
+
+	std::cout << "TCP Channel open" << std::endl;
+
+	tcp_is_open = true;
+}
+
 void Connection::stop() {
+	std::cout << "Closing channels" << std::endl;
 	// Close outgoing channel
 	send_shutdown();
 	closesocket(tcp_command_socket);
 #ifdef _WIN32
 	WSACleanup();
 #endif
+	tcp_thread.join();
 
 	// Close incoming channel
 	should_stop = true;
