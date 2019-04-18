@@ -67,11 +67,7 @@ class MavUtility :
 
 MAV = MavUtility();
 
-print "Start"
-
 import sys
-
-print "SYS libraries imported"
 
 sys.path.extend([
 	"E:\\Python27",
@@ -83,21 +79,11 @@ sys.path.extend([
 ])
 sys.path = list(set(sys.path))
 
-from struct import pack
-print "Struct.pack imported"
-import socket
-print "Socket imported"
-import math
-print "Math imported"
-import thread
-print "Threads imported"
-import time
-print "Time imported"
-
-print "Running"
-
 # This is used to close everything down safely
 shutdown = False
+
+# Used to signal there is a connection
+has_connection = False
 
 """
 	Utility for converting string to array of numbers
@@ -115,6 +101,7 @@ def receive_command_thread() :
 	global shutdown
 	global MAV
 	global cs
+	global has_connection
 	global Script
 
 	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -122,9 +109,10 @@ def receive_command_thread() :
 	server.listen(5)
 
 	while not shutdown :
+		has_connection = False
 		conn, addr = server.accept()
 
-		print "Has connection"
+		has_connection = True
 
 		while not shutdown :
 			try :
@@ -273,10 +261,13 @@ def update_cs() :
 		cs.update()
 
 def print_cs() :
+	global has_connection
+
 	print 'Flying:', ('YES' if cs.flying else 'NO')
 	print 'Armed:', ('YES' if cs.armed else 'NO')
 	print 'Lat,lng:', str(cs.lat), ',', str(cs.lng)
 	print 'Time in air:', str(cs.timeInAir)
+	print 'Connected:', ('YES' if has_connection else 'NO')
 
 try :
 	thread.start_new_thread(receive_command_thread, tuple([]))
@@ -296,13 +287,19 @@ while True :
 		shutdown = True
 		break
 	elif cmds[0] == 'takeoff' :
-		cs.takeoff()
+		if not cs.armed :
+			print 'Cannot takeoff when not armed'
+		else :
+			cs.takeoff()
 	elif cmds[0] == 'land' :
 		cs.land()
 	elif cmds[0] == 'arm' :
 		cs.armed = True
 	elif cmds[0] == 'disarm' :
-		cs.armed = False
+		if cs.flying :
+			print 'Cannot disarm while flying'
+		else :
+			cs.armed = False
 	elif cmds[0] == 'status' :
 		pass
 	elif cmds[0] == 'help' :
