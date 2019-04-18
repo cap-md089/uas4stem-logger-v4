@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <time.h>
 
 #define IDEAL_PACKET_SIZE 99
 
@@ -14,6 +15,7 @@ typedef struct RecordedCoordinates {
 
 class CurrentState {
 	public:
+		CurrentState();
 		unsigned int get_time_in_air() const;
 		double get_latitude() const;
 		double get_longitude() const;
@@ -51,11 +53,11 @@ class CurrentState {
 		 *  1 for incorrect length
 		 *  2 for invalid header
 		 */
-		int update(std::string input);
+		int update(const char*, int);
 
-		void (*flying_callback)(CurrentState*);
-		void (*landed_callback)(CurrentState*, bool);
-		void (*update_callback)(CurrentState*);
+		void (*flying_callback)(CurrentState*) = NULL;
+		void (*landed_callback)(CurrentState*, bool) = NULL;
+		void (*update_callback)(CurrentState*) = NULL;
 	private:
 		unsigned int previous_time_in_air = 0;
 		unsigned int time_in_air;
@@ -77,6 +79,7 @@ class CurrentState {
 
 		bool armed;
 
+		time_t takeoff_timestamp;
 		bool flying;
 		bool continuing_flight;
 

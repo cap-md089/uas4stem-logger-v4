@@ -5,6 +5,8 @@
 #include <cstring>
 #include <stdio.h>
 #include <iostream>
+#include <inttypes.h>
+#include <time.h>
 
 const char header[5] = {
 	'C', 'S', 'D', 'A', 'T'
@@ -14,23 +16,30 @@ const char footer[5] = {
 	'C', 'S', 'E', 'N', 'D'
 };
 
-int CurrentState::update(std::string input) {
-	if (input.length() != IDEAL_PACKET_SIZE) {
+CurrentState::CurrentState() {
+	flying_callback = NULL;
+	landed_callback = NULL;
+	update_callback = NULL;
+	previous_time_in_air = 0;
+	takeoff_timestamp = 0;
+}
+
+int CurrentState::update(const char* input, int length) {
+	if (length != IDEAL_PACKET_SIZE) {
 		return 1;
 	}
 
-	const char* input_data = input.data();
-
 	if (
-		std::memcmp(input_data,			header, 5) != 0 ||
-		std::memcmp(input_data + 0x5E,	footer, 5) != 0
+		std::memcmp(input,			header, 5) != 0 ||
+		std::memcmp(input+ 0x5E,	footer, 5) != 0
 	) {
 		return 2;
 	}
 
-	input_data += 5;
+	const char* input_data = input + 5;
+	int ptime_in_air = get_time_in_air();
 
-	std::memcpy(&time_in_air,					input_data,			4);
+	//std::memcpy(&time_in_air,					input_data,			4);
 	std::memcpy(&latitude,						input_data + 0x04,	8);
 	std::memcpy(&longitude,						input_data + 0x0C,	8);
 	std::memcpy(&battery_voltage,				input_data + 0x14,	4);
@@ -54,27 +63,26 @@ int CurrentState::update(std::string input) {
 		!flying
 	) {
 		flying = true;
-		if (flying_callback != nullptr) (*flying_callback)(this);
+		takeoff_timestamp = time(NULL);
+		if (flying_callback != NULL) (*flying_callback)(this);
 	} else if (
 		((throttle < 12 && ground_speed < 3) || !armed) &&
 		flying
 	) {
 		flying = false;
-		if (landed_callback != nullptr) (*landed_callback)(this, continuing_flight);
+		if (landed_callback != NULL) (*landed_callback)(this, continuing_flight);
 
 		if (continuing_flight) {
-			std::cout << "Consuming continue flight" << std::endl;
-			std::cout << "Previous time in air: " << previous_time_in_air << std::endl;
-			previous_time_in_air += time_in_air;
-			std::cout << "New previous time in air: " << previous_time_in_air << std::endl;
+			previous_time_in_air += ptime_in_air;
 			continuing_flight = false;
 		} else {
-			std::cout << "Wasn't continuing flight, resetting" << std::endl;
 			previous_time_in_air = 0;
 		}
 	}
 
-	if (update_callback != nullptr) (*update_callback)(this);
+	// Time in air is copied last, as it is used for the continuing flight part
+
+	if (update_callback != NULL) (*update_callback)(this);
 
 	if (recording_coordinates) {
 		double x, y;
@@ -101,7 +109,10 @@ int CurrentState::update(std::string input) {
 }
 
 unsigned int CurrentState::get_time_in_air() const {
-	return time_in_air;
+	if (!flying) {
+		return 0;
+	}
+	return time(NULL) - takeoff_timestamp;
 }
 
 double CurrentState::get_latitude() const {
@@ -169,7 +180,7 @@ bool CurrentState::get_flying() const {
 }
 
 int CurrentState::get_battery_timer() const {
-	return previous_time_in_air + time_in_air;
+	return previous_time_in_air + get_time_in_air();
 }
 
 bool CurrentState::get_continuing_flight() const {
@@ -182,7 +193,6 @@ float CurrentState::get_time_required_for_landing() const {
 
 void CurrentState::continue_flight() {
 	continuing_flight = true;
-	std::cout << "Continuing flight: set" << std::endl;
 }
 
 bool CurrentState::get_recording() {
