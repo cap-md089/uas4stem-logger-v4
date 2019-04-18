@@ -486,19 +486,6 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="saveFlightDataButton">
-                    <property name="label" translatable="yes">Save Flight Data</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">14</property>
-                  </packing>
-                </child>
-                <child>
                   <object class="GtkTextView" id="programLog">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -683,33 +670,6 @@
           </packing>
         </child>
         <child>
-          <object class="GtkBox" id="box2">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-          </object>
-          <packing>
-            <property name="position">3</property>
-          </packing>
-        </child>
-        <child type="tab">
-          <object class="GtkLabel" id="scrabbleLbl">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="label" translatable="yes">Scrabble</property>
-          </object>
-          <packing>
-            <property name="position">3</property>
-            <property name="tab_fill">False</property>
-          </packing>
-        </child>
-        <child>
           <object class="GtkBox" id="scrabbleBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
@@ -737,6 +697,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="invisible_char">●</property>
+                    <property name="invisible_char_set">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -765,8 +726,22 @@
             </child>
           </object>
           <packing>
-            <property name="position">4</property>
+            <property name="position">3</property>
           </packing>
+        </child>
+        <child type="tab">
+          <object class="GtkLabel" id="scrabbleLbl">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">Scrabble</property>
+          </object>
+          <packing>
+            <property name="position">3</property>
+            <property name="tab_fill">False</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
         </child>
         <child type="tab">
           <placeholder/>
