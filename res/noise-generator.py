@@ -1,4 +1,4 @@
-from struct import pack
+from struct import pack, unpack
 import socket
 import math
 import thread
@@ -13,7 +13,7 @@ class CurrentState :
 	battery_voltage = 12.5
 	battery_remaining = 90
 	alt = 0.5
-	groundspeed = 0
+	groundspeed = 10
 	ch3percent = 0
 	DistToHome = 0.00
 	roll = 0
@@ -27,9 +27,10 @@ class CurrentState :
 	def update(self) :
 		if self.flying :
 			self.timeInAir += 1
-			self.lat += (random.random() - 0.5) / 100.0
-			self.lng += (random.random() - 0.5) / 100.0
-			self.alt += (random.random() - 0.5) / 100.0
+			self.lat += ((random.random() - 0.5) / 10000.0)
+			self.lng += ((random.random() - 0.5) / 10000.0)
+			self.alt += ((random.random() - 0.5) / 10000.0)
+			self.battery_voltage -= ((random.random() - 0.1) / 100.0)
 		else :
 			self.alt = 0.5
 
@@ -40,7 +41,6 @@ class CurrentState :
 			self.alt = 30
 
 	def land(self) :
-		self.timeInAir = 0
 		self.flying = False
 		self.ch3percent = 0
 
@@ -228,22 +228,22 @@ def serialize_current_state() :
 
 	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<iddffdffffffdddf?",
-		int(cs.timeInAir),
+		"<ddddddifffffffff?",
 		cs.lat,
 		cs.lng,
+		cs.alt,
+		cs.roll,
+		cs.yaw,
+		cs.pitch,
+		int(cs.timeInAir),
 		cs.battery_voltage,
 		cs.battery_remaining,
-		cs.alt,
 		cs.groundspeed,
 		cs.ch3percent,
 		cs.DistToHome,
 		cs.verticalspeed,
 		Script.GetParam('WPNAV_SPEED') / 100,
 		rtl_land_speed,
-		cs.roll,
-		cs.yaw,
-		cs.pitch,
 		time_required_to_rtl,
 		cs.armed
 	))
@@ -265,8 +265,17 @@ def print_cs() :
 
 	print 'Flying:', ('YES' if cs.flying else 'NO')
 	print 'Armed:', ('YES' if cs.armed else 'NO')
-	print 'Lat,lng:', str(cs.lat), ',', str(cs.lng)
+	print 'Lat,lng:', str(cs.lat) + ', ' + str(cs.lng)
+	alt = pack("<d", cs.lat)
+	for i in alt :
+		print '{:0>2x}'.format(ord(i)),
+	print
+	alt = pack("<d", cs.alt)
+	for i in alt :
+		print '{:0>2x}'.format(ord(i)),
+	print
 	print 'Time in air:', str(cs.timeInAir)
+	print 'Altitude:', str(cs.alt)
 	print 'Connected:', ('YES' if has_connection else 'NO')
 
 try :

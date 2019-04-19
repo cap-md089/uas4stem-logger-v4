@@ -17,7 +17,6 @@ class Configuration {
 		unsigned int get_max_flight_time();
 		void set_max_flight_time(unsigned int);
 
-		// Result needs to be `free`d
 		void get_data_dir_location(char*);
 	private:
 		unsigned int max_flight_time;

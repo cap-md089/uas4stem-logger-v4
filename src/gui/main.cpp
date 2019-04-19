@@ -18,7 +18,15 @@ static CurrentFlight overall_flight;
 
 static GtkBuilder* builder;
 
-static std::vector<double> voltages;
+static int flight_count = 0;
+
+static double camera_width(double alt) {
+	return 2 * 1.04891304331  * alt;
+}
+
+static double camera_depth(double alt) {
+	return 2 * 0.489130434783 * alt;
+}
 
 static void toggle_recording(GtkWidget* widget, gpointer data) {
 	GtkButton* button = (GtkButton*)widget;
@@ -28,6 +36,7 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 	const gchar* startLabel = "Start Recording";
 	const gchar* stopLabel = "Stop Recording";
 	const gchar* recordingMsg = "Recording...";
+	const char* entry_text;
 
 	if (currentState->get_recording()) {
 	//if (currentLabel[2] != startLabel[2]) {
@@ -35,9 +44,11 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 		gtk_button_set_label(button, startLabel);
 		RecordedCoordinates* recorded = currentState->stop_recording();
 
-		std::string target_description = std::string(gtk_entry_get_text(current_target));
+		entry_text = gtk_entry_get_text(current_target);
+		std::string target_description = std::string(entry_text);
 
-		RecordedTarget* target = (RecordedTarget*)malloc(sizeof(RecordedTarget));
+		RecordedTarget* target = new RecordedTarget;
+		printf("%p\n", target);
 
 		target->latitude = recorded->latitude;
 		target->longitude = recorded->longitude;
@@ -101,23 +112,32 @@ static void enable_auto() {
 	dataConnection->send_auto();
 }
 
+static void update_voltage_display_text(GtkTextView* voltage_box, const char* text) {
+	std::string newtext_string = text;
+	std::string oldtext_string;
+
+	GtkTextIter start_position, end_position;
+	GtkTextBuffer* buffer = gtk_text_view_get_buffer(voltage_box);
+	gtk_text_buffer_get_end_iter(buffer, &end_position);
+	gtk_text_buffer_get_start_iter(buffer, &start_position);
+	char* oldtext = (char*)gtk_text_buffer_get_text(buffer, (const GtkTextIter*)&start_position, (const GtkTextIter*)&end_position, true);
+	oldtext_string = oldtext;
+	std::string text_to_set = oldtext_string + newtext_string;
+	gtk_text_buffer_set_text(buffer, text_to_set.data(), -1);
+}
+
 static bool checking_voltage = false;
 
 static int update_voltage_display(gpointer box) {
 	GtkTextView* voltage_box = (GtkTextView*)box;
 
+	checking_voltage = true;
+
 	if (currentState->get_flying()) {
+		flight.battery_voltages.push_back(currentState->get_battery_voltage());
 		char newtext[20];
 		sprintf(newtext, "%2.3f\n", currentState->get_battery_voltage());
-
-		GtkTextIter start_position, end_position;
-		GtkTextBuffer* buffer = gtk_text_view_get_buffer(voltage_box);
-		gtk_text_buffer_get_end_iter(buffer, &end_position);
-		gtk_text_buffer_get_start_iter(buffer, &start_position);
-		char* old_string = (char*)gtk_text_buffer_get_text(buffer, (const GtkTextIter*)&start_position, (const GtkTextIter*)&end_position, true);
-		strcat(old_string, newtext);
-		gtk_text_buffer_set_text(buffer, old_string, -1);
-
+		update_voltage_display_text(voltage_box, newtext);
 		return G_SOURCE_CONTINUE;
 	} else {
 		checking_voltage = false;
@@ -179,6 +199,27 @@ static int update_time_descriptions(gpointer lbl) {
 	return G_SOURCE_REMOVE;
 }
 
+static int update_camera_size(gpointer lbl) {
+	GtkLabel* camera_size_desc = (GtkLabel*)lbl;
+
+	double width = camera_width(currentState->get_altitude());
+	double depth = camera_depth(currentState->get_altitude());
+	double area = width * depth;
+	char camera_size_desc_text[250];
+
+	sprintf(
+		camera_size_desc_text,
+		"Camera size: Width: %3.1f m; Depth: %3.1f m; Area: %4.1f m;",
+		width,
+		depth,
+		area
+	);
+
+	//gtk_label_set_text(camera_size_desc, camera_size_desc_text);
+
+	return G_SOURCE_REMOVE;
+}
+
 static void current_state_update(CurrentState* cs) {
 	GObject* obj;
 
@@ -191,16 +232,37 @@ static void current_state_update(CurrentState* cs) {
 	obj = gtk_builder_get_object(builder, "timeDescriptions");
 	g_main_context_invoke(NULL, update_time_descriptions, obj);
 
-	if (!checking_voltage && cs->get_flying()) {
-		obj = gtk_builder_get_object(builder, "voltageData");
-		update_voltage_display((gpointer)obj);
-		g_timeout_add(10000, G_SOURCE_FUNC(update_voltage_display), obj);
+	obj = gtk_builder_get_object(builder, "cameraSize");
+	g_main_context_invoke(NULL, update_camera_size, obj);
+}
 
-		checking_voltage = true;
-	}
+static int end_voltage_display(gpointer obj) {
+	obj = gtk_builder_get_object(builder, "voltageData");
+
+	char stopped[28];
+	sprintf(stopped, "--- Flight %d stopped ---\n", flight_count);
+	update_voltage_display_text((GtkTextView*)obj, stopped);
+
+	return G_SOURCE_REMOVE;
+}
+
+static int start_voltage_display_update(gpointer obj) {
+	obj = gtk_builder_get_object(builder, "voltageData");
+
+	char started[28];
+	sprintf(started, "--- Flight %d started ---\n", flight_count);
+	update_voltage_display_text((GtkTextView*)obj, started);
+
+	update_voltage_display((gpointer)obj);
+	g_timeout_add(10000, G_SOURCE_FUNC(update_voltage_display), obj);
+
+	return G_SOURCE_REMOVE;
 }
 
 static void start_flying(CurrentState* cs) {
+	flight_count++;
+
+	g_main_context_invoke(NULL, start_voltage_display_update, NULL);
 }
 
 static int stop_flying_label(gpointer lbl) {
@@ -216,11 +278,13 @@ static int stop_flying_label(gpointer lbl) {
 static void stop_flying(CurrentState* cs, bool continued) {
 	GObject* obj;
 
-	std::cout << "stopped flight" << std::endl;
 	obj = gtk_builder_get_object(builder, "flightContinueStatus");
 	g_main_context_invoke(NULL, stop_flying_label, obj);
 
-	std::cout << "saving flight" << std::endl;
+	obj = gtk_builder_get_object(builder, "voltageData");
+	g_main_context_invoke(NULL, end_voltage_display, obj);
+
+	flight.battery_voltages.push_back(cs->get_battery_voltage());
 	obj = gtk_builder_get_object(builder, "batterySelectID");
 	save_flight(
 		config,
@@ -228,7 +292,6 @@ static void stop_flying(CurrentState* cs, bool continued) {
 		cs->get_battery_timer(),
 		gtk_combo_box_get_active((GtkComboBox*)obj)
 	);
-	std::cout << "saved flight" << std::endl;
 
 	clear_flight(&flight);
 }

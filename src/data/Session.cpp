@@ -44,8 +44,8 @@ void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, in
 	fs.open(location);
 
 	fs << file_name << std::endl;
-	fs << "Time in air: " << time_in_air << ";" << std::endl;
-	fs << "Battery ID (0-based): " << battery_id << ";" << std::endl;
+	fs << "Time in air: " << time_in_air << std::endl;
+	fs << "Battery ID (0-based): " << battery_id << std::endl;
 	fs << std::endl;
 	std::cout << file_name << std::endl;
 	std::cout << "Time in air: " << time_in_air << ";" << std::endl;
@@ -55,9 +55,13 @@ void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, in
 	fs << "--- Targets found ---" << std::endl;
 	std::cout << "--- Targets found ---" << std::endl;
 
+	char results[512];
+	const char* desc;
 	for (auto &a : flight->targets) {
-		fs << "(" << a->latitude << ", " << a->longitude << "): \"" << a->description << "\"; found at " << a->time_in_air << ";" << std::endl;
-		std::cout << "(" << a->latitude << ", " << a->longitude << "): \"" << a->description << "\"; found at " << a->time_in_air << ";" << std::endl;
+		desc = a->description.data();
+		sprintf(results, "(%4.7f, %4.7f): \"%s\"; found at %d sec", a->latitude, a->longitude, desc, a->time_in_air);
+		fs << results << std::endl;
+		std::cout << results << std::endl;
 	}
 
 	fs << std::endl;
@@ -70,8 +74,8 @@ void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, in
 	unsigned int i = 0;
 	for (; i < flight->battery_voltages.size() - 1; i++) {
 		v = flight->battery_voltages.at(i);
-		fs << (i * 10) << "sec: " << v << std::endl;
-		std::cout << (i * 10) << "sec: " << v << std::endl;
+		fs << (i * 10) << " sec: " << v << std::endl;
+		std::cout << (i * 10) << " sec: " << v << std::endl;
 	}
 
 	v = flight->battery_voltages.at(i);

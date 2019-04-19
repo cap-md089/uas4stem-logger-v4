@@ -22,7 +22,10 @@ CurrentState::CurrentState() {
 	update_callback = NULL;
 	previous_time_in_air = 0;
 	takeoff_timestamp = 0;
+	recording_coordinates = false;
 }
+
+static double previous_alt = 0;
 
 int CurrentState::update(const char* input, int length) {
 	if (length != IDEAL_PACKET_SIZE) {
@@ -39,23 +42,34 @@ int CurrentState::update(const char* input, int length) {
 	const char* input_data = input + 5;
 	int ptime_in_air = get_time_in_air();
 
-	//std::memcpy(&time_in_air,					input_data,			4);
-	std::memcpy(&latitude,						input_data + 0x04,	8);
-	std::memcpy(&longitude,						input_data + 0x0C,	8);
-	std::memcpy(&battery_voltage,				input_data + 0x14,	4);
-	std::memcpy(&battery_remaining,				input_data + 0x18,	4);
-	std::memcpy(&altitude,						input_data + 0x1C,	8);
-	std::memcpy(&ground_speed,					input_data + 0x24,	4);
-	std::memcpy(&throttle,						input_data + 0x28,	4);
-	std::memcpy(&dist_to_home,					input_data + 0x2C,	4);
-	std::memcpy(&vertical_speed,				input_data + 0x30,	4);
-	std::memcpy(&rtl_speed,						input_data + 0x34,	4);
-	std::memcpy(&rtl_land_speed,				input_data + 0x38,	4);
-	std::memcpy(&roll,							input_data + 0x3C,	8);
-	std::memcpy(&yaw,							input_data + 0x44,	8);
-	std::memcpy(&pitch,							input_data + 0x4C,	8);
+	std::memcpy(&latitude,						input_data,			8);
+	std::memcpy(&longitude,						input_data + 0x08,	8);
+	std::memcpy(&altitude,						input_data + 0x10,	8);
+	std::memcpy(&roll,							input_data + 0x18,	8);
+	std::memcpy(&yaw,							input_data + 0x20,	8);
+	std::memcpy(&pitch,							input_data + 0x28,	8);
+	std::memcpy(&time_in_air,					input_data + 0x30,	4);
+	std::memcpy(&battery_voltage,				input_data + 0x34,	4);
+	std::memcpy(&battery_remaining,				input_data + 0x38,	4);
+	std::memcpy(&ground_speed,					input_data + 0x3C,	4);
+	std::memcpy(&throttle,						input_data + 0x40,	4);
+	std::memcpy(&dist_to_home,					input_data + 0x44,	4);
+	std::memcpy(&vertical_speed,				input_data + 0x48,	4);
+	std::memcpy(&rtl_speed,						input_data + 0x4C,	4);
+	std::memcpy(&rtl_land_speed,				input_data + 0x50,	4);
 	std::memcpy(&time_required_for_landing,		input_data + 0x54,	4);
 	std::memcpy(&armed,							input_data + 0x58,	1);
+
+	printf("\r");
+	for (int i = 0; i < 8; i++) {
+		printf("%02x ", (char)*(input_data + i + 0x00) & 0xFF);
+	}
+	printf(": ");
+	for (int i = 0; i < 8; i++) {
+		printf("%02x ", (char)*(input_data + i + 0x10) & 0xFF);
+	}
+
+	printf("% 50.3f", altitude);
 
 	if (
 		(throttle > 12 || ground_speed > 3) &&
@@ -69,8 +83,8 @@ int CurrentState::update(const char* input, int length) {
 		((throttle < 12 && ground_speed < 3) || !armed) &&
 		flying
 	) {
-		flying = false;
 		if (landed_callback != NULL) (*landed_callback)(this, continuing_flight);
+		flying = false;
 
 		if (continuing_flight) {
 			previous_time_in_air += ptime_in_air;
@@ -79,8 +93,6 @@ int CurrentState::update(const char* input, int length) {
 			previous_time_in_air = 0;
 		}
 	}
-
-	// Time in air is copied last, as it is used for the continuing flight part
 
 	if (update_callback != NULL) (*update_callback)(this);
 
@@ -207,6 +219,12 @@ void CurrentState::start_recording(float lp, float rp) {
 
 RecordedCoordinates* CurrentState::stop_recording() {
 	RecordedCoordinates* returnValue = (RecordedCoordinates*)malloc(sizeof(RecordedCoordinates));
+
+	if (!recording_coordinates) {
+		return NULL;
+	}
+
+	recording_coordinates = false;
 
 	double x = 0, y = 0;
 

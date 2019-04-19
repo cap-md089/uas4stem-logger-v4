@@ -143,26 +143,33 @@ def serialize_current_state() :
 		(Script.GetParam('LAND_SPEED') + float(descent) + float(descent)) / 3
 	) / 100
 
+	time_required_to_get_home = cs.DistToHome / (Script.GetParam('WPNAV_SPEED') / 100)
+
+	time_required_to_land += 20
+
+	time_required_to_land2 = (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED')
+
+	time_required_to_rtl = time_required_to_land + time_required_to_get_home + time_required_to_land2
+
 	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<iddffdffffffdddf?",
-		int(cs.timeInAir),
+		"<ddddddifffffffff?",
 		cs.lat,
 		cs.lng,
+		cs.alt,
+		cs.roll,
+		cs.yaw,
+		cs.pitch,
+		int(cs.timeInAir),
 		cs.battery_voltage,
 		cs.battery_remaining,
-		cs.alt,
 		cs.groundspeed,
 		cs.ch3percent,
 		cs.DistToHome,
 		cs.verticalspeed,
 		Script.GetParam('WPNAV_SPEED') / 100,
 		rtl_land_speed,
-		cs.roll,
-		cs.yaw,
-		cs.pitch,
-        cs.DistToHome / (Script.GetParam('WPNAV_SPEED')/100) + 20 + (((cs.alt - 10) / Script.GetParam('LAND_SPEED')) \
-                                                                         if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'),
+		time_required_to_rtl,
 		cs.armed
 	))
 	packed.extend(['C', 'S', 'E', 'N', 'D'])

@@ -20,8 +20,8 @@ int Configuration::open() {
 	}
 	PathAppend(location, "config");
 
-	std::fstream fs;
-	fs.open(location, std::fstream::in);
+	std::ifstream fs;
+	fs.open(location, std::ifstream::in);
 
 	unsigned int length = fs.tellg();
 
@@ -56,14 +56,15 @@ int Configuration::save() {
 	}
 	PathAppend(location, "config");
 
-	std::fstream fs;
-	fs.open(location, std::fstream::out | std::fstream::trunc);
+	std::ofstream fs;
+	fs.open(location, std::ofstream::out | std::ofstream::trunc);
 
 	char data[4];
 
 	std::memcpy(data, &max_flight_time, 4);
 
 	fs.write(data, 4);
+	fs.close();
 #endif
 	return 0;
 }

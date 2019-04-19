@@ -65,7 +65,7 @@ class CurrentState {
 		double longitude;
 		float battery_voltage;
 		float battery_remaining;
-		float altitude;
+		double altitude;
 		float ground_speed;
 		float throttle;
 		float dist_to_home;

@@ -7,12 +7,12 @@
 #include <cstring>
 #include <iostream>
 
-std::vector<std::string> user_log;
-CurrentState cs;
-Connection conn;
-Configuration conf;
-
 int main (int argc, char **argv) {
+	std::vector<std::string> user_log;
+	CurrentState cs;
+	Connection conn;
+	Configuration conf;
+
 	conn.setup(&cs, &user_log);
 	conf.open();
 
