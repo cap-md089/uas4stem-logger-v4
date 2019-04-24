@@ -25,6 +25,7 @@ class Connection {
 		void close_golf_bottle();
 		void send_rtl();
 		void send_auto();
+		void send_open_waypoints(std::string);
 
 		/**
 		 * Nice for the operator to know how good the connection is

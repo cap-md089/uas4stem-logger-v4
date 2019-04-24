@@ -13,7 +13,7 @@ class CurrentState :
 	battery_voltage = 12.5
 	battery_remaining = 90
 	alt = 0.5
-	groundspeed = 10
+	groundspeed = 0
 	ch3percent = 0
 	DistToHome = 0.00
 	roll = 0
@@ -39,10 +39,12 @@ class CurrentState :
 			self.flying = True
 			self.ch3percent = 50
 			self.alt = 30
+			self.groundspeed = 5
 
 	def land(self) :
 		self.flying = False
 		self.ch3percent = 0
+		self.groundspeed = 0
 
 cs = CurrentState()
 
@@ -51,7 +53,11 @@ class ScriptRunner :
 		return 10.00
 
 	def ChangeMode(self, mode) :
-		pass
+		if mode == 'AUTO' and not cs.flying :
+			cs.takeoff()
+
+		if mode == 'RTL' and cs.flying :
+			cs.land()
 
 Script = ScriptRunner()
 
@@ -124,7 +130,10 @@ def receive_command_thread() :
 			data = buffer(incoming_packet)
 			func = data[0]
 
+			os.system('cls')
 			print "Received command: ", data
+			print_cs()
+			print ' > ',
 
 			if func == 1 :
 				try :
@@ -148,7 +157,8 @@ def receive_command_thread() :
 			if func == 4 :
 				# Maybe auto open a file specified, for the setup?
 				# Will need to pass a file path for that...
-				pass
+				path = conn.recv(data[1])
+				print path
 
 			if func == 5 :
 				Script.ChangeMode('RTL')
@@ -265,18 +275,11 @@ def print_cs() :
 
 	print 'Flying:', ('YES' if cs.flying else 'NO')
 	print 'Armed:', ('YES' if cs.armed else 'NO')
-	print 'Lat,lng:', str(cs.lat) + ', ' + str(cs.lng)
-	alt = pack("<d", cs.lat)
-	for i in alt :
-		print '{:0>2x}'.format(ord(i)),
-	print
-	alt = pack("<d", cs.alt)
-	for i in alt :
-		print '{:0>2x}'.format(ord(i)),
-	print
+	print 'Lat,lng:', str(cs.lat) + ',' + str(cs.lng)
 	print 'Time in air:', str(cs.timeInAir)
 	print 'Altitude:', str(cs.alt)
 	print 'Connected:', ('YES' if has_connection else 'NO')
+	print 'Battery voltage:', str(cs.battery_voltage)
 
 try :
 	thread.start_new_thread(receive_command_thread, tuple([]))

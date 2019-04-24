@@ -8,17 +8,29 @@
 #include <gdk/gdk.h>
 #include <iostream>
 #include "../config/config.h"
+#include <time.h>
 #include <math.h>
+#include <fstream>
 
 static Connection* dataConnection;
 static CurrentState* currentState;
 static Configuration* config;
+
 static CurrentFlight flight;
 static CurrentFlight overall_flight;
 
 static GtkBuilder* builder;
 
 static int flight_count = 0;
+static int timeout_id;
+
+static std::vector<bool> selected_coordinates;
+
+typedef struct CoordinateGroup {
+	uint64_t id;
+	GtkButton* select_button;
+	GtkButton* deselect_button;
+} CoordinateGroup;
 
 static double camera_width(double alt) {
 	return 2 * 1.04891304331  * alt;
@@ -26,6 +38,206 @@ static double camera_width(double alt) {
 
 static double camera_depth(double alt) {
 	return 2 * 0.489130434783 * alt;
+}
+
+static void deselect_coordinate(gpointer, gpointer);
+static void select_coordinate(gpointer, gpointer);
+
+static void add_possible_coordinate(RecordedTarget* target) {
+	uint64_t id = selected_coordinates.size();
+	selected_coordinates.push_back(false);
+
+	GtkBox* new_box			= (GtkBox*)gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	GtkBox* available_box	= (GtkBox*)gtk_builder_get_object(builder, "possibleCoordinates");
+
+	GtkLabel*	desc_label		= (GtkLabel*)	gtk_label_new((target->description).data());
+	GtkButton*	select_button	= (GtkButton*)	gtk_button_new_with_label("Select");	
+	GtkButton*	deselect_button	= (GtkButton*)	gtk_button_new_with_label("Deselect");
+
+	gtk_box_pack_start(new_box, (GtkWidget*)desc_label,			false, false, 10);
+	gtk_box_pack_start(new_box, (GtkWidget*)select_button,		false, false, 10);
+	gtk_box_pack_start(new_box, (GtkWidget*)deselect_button,	false, false, 10);
+
+	gtk_box_pack_start(available_box, (GtkWidget*)new_box, false, false, 10);
+
+	CoordinateGroup* coordinate_group = new CoordinateGroup;
+	coordinate_group->id = id;
+	coordinate_group->deselect_button = deselect_button;
+	coordinate_group->select_button = select_button;
+
+	gtk_widget_set_sensitive((GtkWidget*)deselect_button, FALSE);
+
+	g_signal_connect((GObject*)select_button,	"clicked", G_CALLBACK(select_coordinate),	coordinate_group);
+	g_signal_connect((GObject*)deselect_button,	"clicked", G_CALLBACK(deselect_coordinate),	coordinate_group);
+
+	gtk_widget_show_all((GtkWidget*)new_box);
+}
+
+static void select_coordinate(gpointer box, gpointer data_pointer) {
+	CoordinateGroup* data = (CoordinateGroup*)data_pointer;
+
+	uint64_t id = data->id;
+	GtkButton* select_button = data->select_button;
+	GtkButton* deselect_button = data->deselect_button;
+
+	selected_coordinates[id] = true;
+
+	gtk_widget_set_sensitive((GtkWidget*)select_button,		FALSE);
+	gtk_widget_set_sensitive((GtkWidget*)deselect_button,	TRUE);
+}
+
+static void deselect_coordinate(gpointer fakeid, gpointer data_pointer) {
+	CoordinateGroup* data = (CoordinateGroup*)data_pointer;
+
+	uint64_t id = data->id;
+	GtkButton* select_button = data->select_button;
+	GtkButton* deselect_button = data->deselect_button;
+
+	selected_coordinates[id] = false;
+
+	gtk_widget_set_sensitive((GtkWidget*)select_button,		TRUE);
+	gtk_widget_set_sensitive((GtkWidget*)deselect_button,	FALSE);
+}
+
+static void generate_flight_plan() {
+	int count = 0;
+	for (unsigned int i = 0; i < selected_coordinates.size(); i++) {
+		if (selected_coordinates[i]) {
+			count++;
+		}
+	}
+	if (!count) {
+		return;
+	}
+
+	int flight_count = count / 2;
+	// 108 per command; 3 commands for each drop, 3 commands for each flight, 1 or 2 drops per flight
+	int file_size = 13 + 56 + (108 * count * 3) + (108 * (flight_count + 1) * 3);
+	int current_byte = 0;
+	int command_number = 0;
+
+	char* file_text = (char*)malloc(sizeof(char) * file_size);
+	for (unsigned int i = 0; i < (sizeof(char) * file_size); i++) {
+		*(file_text + i) = 0;
+	}
+
+	sprintf(
+		file_text,
+		"QGC WPL 110\r\n%d 1 0 16 0 0 0 0 %.8f %.8f 16.440001 1\r\n",
+		command_number++,
+		currentState->get_latitude(),
+		currentState->get_longitude()
+	);
+
+	// Go until NULL
+	while (*(file_text + current_byte)) {
+		current_byte++;
+	}
+
+	// 0 for charlie, 1 for golf
+	int current_bottle = 0;
+
+	for (unsigned int i = 0; i < selected_coordinates.size(); i++) {
+		if (!selected_coordinates[i]) {
+			continue;
+		}
+
+		double lat, lng;
+		RecordedTarget* target = overall_flight.targets.at(i);
+		lat = target->latitude;
+		lng = target->longitude;
+
+		if (current_bottle == 0) {
+			// Takeoff command
+			sprintf(
+				file_text + current_byte,
+				"%d 0 3 22 0 0 0 0 0 0 20.0 1\r\n",
+				command_number
+			);
+			command_number++;
+
+			// Go until NULL
+			while (*(file_text + current_byte)) {
+				current_byte++;
+			}
+
+			sprintf(
+				file_text + current_byte,
+				"%d 0 3 16 0 0 0 0 %.8f %.8f 20.0 1\r\n",
+				command_number,
+				currentState->get_latitude(),
+				currentState->get_longitude()
+			);
+			command_number++;
+
+			// Go until NULL
+			while (*(file_text + current_byte)) {
+				current_byte++;
+			}
+		}
+
+		// Go to target and open servo
+		sprintf(
+			file_text + current_byte,
+			"%d 0 3 16 0 0 0 0 %.8f %.8f 15 1\r\n"
+			"%d 0 3 183 %d 1000 0 0 0 0 1\r\n"
+			"%d 0 3 16 5 0 0 0 %.8f %.8f 15 1\r\n",
+			command_number,
+			lat,
+			lng,
+			command_number + 1,
+			5 + current_bottle,
+			command_number + 2,
+			lat,
+			lng
+		);
+
+		while (*(file_text + current_byte)) {
+			current_byte++;
+		}
+
+		command_number += 3;
+
+		if (current_bottle == 1 || (i == (selected_coordinates.size() - 1))) {
+			sprintf(
+				file_text + current_byte,
+				"%d 0 3 20 0 0 0 0 0 0 0 1\r\n",
+				command_number++
+			);
+
+			// Go until NULL
+			while (*(file_text + current_byte)) {
+				current_byte++;
+			}
+		}
+
+		current_bottle = (current_bottle + 1) % 2;
+	}
+
+	char location[260];
+	config->get_data_dir_location(location);
+	char file_name[40];
+	std::string file_name2;
+
+	time_t rawtime;
+	struct tm* time_info;
+	time(&rawtime);
+	time_info = localtime(&rawtime);
+	strftime(file_name, 40, "Plan %Y-%m-%d %H-%M", time_info);
+
+	strcat(location, "\\");
+	strcat(location, file_name);
+	strcat(location, ".waypoints");
+	file_name2 = location;
+
+	std::ofstream fs;
+	fs.open(location, std::ios::out | std::ios::binary);
+	fs << file_text;
+	fs.close();
+
+	dataConnection->send_open_waypoints(file_name2);
+	
+	free(file_text);
 }
 
 static void toggle_recording(GtkWidget* widget, gpointer data) {
@@ -48,7 +260,12 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 		std::string target_description = std::string(entry_text);
 
 		RecordedTarget* target = new RecordedTarget;
-		printf("%p\n", target);
+
+		if (recorded->latitude == 0) {
+			// Occurs if it didn't record, due to not flying
+			recorded->latitude = currentState->get_latitude();
+			recorded->longitude = currentState->get_longitude();
+		}
 
 		target->latitude = recorded->latitude;
 		target->longitude = recorded->longitude;
@@ -57,6 +274,8 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 
 		flight.targets.push_back(target);
 		overall_flight.targets.push_back(target);
+
+		add_possible_coordinate(target);
 
 		char coordinates_description[48];
 		sprintf(coordinates_description, "%2.6f, %2.6f", recorded->latitude, recorded->longitude);
@@ -215,7 +434,7 @@ static int update_camera_size(gpointer lbl) {
 		area
 	);
 
-	//gtk_label_set_text(camera_size_desc, camera_size_desc_text);
+	gtk_label_set_text(camera_size_desc, camera_size_desc_text);
 
 	return G_SOURCE_REMOVE;
 }
@@ -242,6 +461,8 @@ static int end_voltage_display(gpointer obj) {
 	char stopped[28];
 	sprintf(stopped, "--- Flight %d stopped ---\n", flight_count);
 	update_voltage_display_text((GtkTextView*)obj, stopped);
+	g_source_remove(timeout_id);
+	timeout_id = 0;
 
 	return G_SOURCE_REMOVE;
 }
@@ -254,7 +475,8 @@ static int start_voltage_display_update(gpointer obj) {
 	update_voltage_display_text((GtkTextView*)obj, started);
 
 	update_voltage_display((gpointer)obj);
-	g_timeout_add(10000, G_SOURCE_FUNC(update_voltage_display), obj);
+
+	timeout_id = g_timeout_add(10000, G_SOURCE_FUNC(update_voltage_display), obj);
 
 	return G_SOURCE_REMOVE;
 }
@@ -294,6 +516,43 @@ static void stop_flying(CurrentState* cs, bool continued) {
 	);
 
 	clear_flight(&flight);
+}
+
+static void update_altitude_calculations_configuration(gpointer entry) {
+	GtkEntry* altitude_entry = (GtkEntry*)entry;
+	GtkLabel* camera_size_desc = (GtkLabel*)gtk_builder_get_object(builder, "altitudeCheckOutput");
+
+	const char* altitude_entered = gtk_entry_get_text(altitude_entry);
+
+	double altitude;
+	sscanf(altitude_entered, "%lf", &altitude);
+
+	double width = camera_width(altitude);
+	double depth = camera_depth(altitude);
+	double area = width * depth;
+	char camera_size_desc_text[250];
+
+	sprintf(
+		camera_size_desc_text,
+		"Camera size: Width: %3.1f m; Depth: %3.1f m; Area: %4.1f m;",
+		width,
+		depth,
+		area
+	);
+
+	gtk_label_set_text(camera_size_desc, camera_size_desc_text);
+}
+
+static void update_max_flight_time(gpointer entry) {
+	GtkEntry* max_flight_time_entry = (GtkEntry*)entry;
+
+	const char* max_flight_entered = gtk_entry_get_text(max_flight_time_entry);
+
+	unsigned int time;
+	sscanf(max_flight_entered, "%ud", &time);
+
+	config->set_max_flight_time(time);
+	config->save();
 }
 
 int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>* log, Connection* conn, Configuration* conf) {
@@ -347,6 +606,20 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 
 	obj = gtk_builder_get_object(builder, "continueFlight");
 	g_signal_connect(obj, "clicked", G_CALLBACK(continue_flight), NULL);
+
+	obj = gtk_builder_get_object(builder, "altitudeCheckEntry");
+	g_signal_connect(obj, "changed", G_CALLBACK(update_altitude_calculations_configuration), obj);
+
+	obj = gtk_builder_get_object(builder, "maxFlightTimeEntry");
+	g_signal_connect(obj, "changed", G_CALLBACK(update_max_flight_time), obj);
+	{
+		char entry_text[5];
+		sprintf(entry_text, "%d", conf->get_max_flight_time());
+		gtk_entry_set_text((GtkEntry*)obj, entry_text);
+	}
+
+	obj = gtk_builder_get_object(builder, "generateFlightPlan");
+	g_signal_connect(obj, "clicked", G_CALLBACK(generate_flight_plan), NULL);
 
 	currentState->update_callback = &current_state_update;
 	currentState->landed_callback = &stop_flying;

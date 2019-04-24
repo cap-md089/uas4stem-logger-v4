@@ -145,6 +145,10 @@ def serialize_current_state() :
 
 	time_required_to_get_home = cs.DistToHome / (Script.GetParam('WPNAV_SPEED') / 100)
 
+	time_required_to_land = \
+		(((cs.alt - 10) / Script.GetParam('LAND_SPEED'))) \
+		if cs.alt > 10 else \
+		0
 	time_required_to_land += 20
 
 	time_required_to_land2 = (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED')

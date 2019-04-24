@@ -18,6 +18,8 @@ int main (int argc, char **argv) {
 
 	int gui_status = start_gui(argc, argv, &cs, &user_log, &conn, &conf);
 
+	std::cout << "ended" << std::endl;
+
 	conn.stop();
 
 	return gui_status;

@@ -25,8 +25,6 @@ CurrentState::CurrentState() {
 	recording_coordinates = false;
 }
 
-static double previous_alt = 0;
-
 int CurrentState::update(const char* input, int length) {
 	if (length != IDEAL_PACKET_SIZE) {
 		return 1;
@@ -59,17 +57,6 @@ int CurrentState::update(const char* input, int length) {
 	std::memcpy(&rtl_land_speed,				input_data + 0x50,	4);
 	std::memcpy(&time_required_for_landing,		input_data + 0x54,	4);
 	std::memcpy(&armed,							input_data + 0x58,	1);
-
-	printf("\r");
-	for (int i = 0; i < 8; i++) {
-		printf("%02x ", (char)*(input_data + i + 0x00) & 0xFF);
-	}
-	printf(": ");
-	for (int i = 0; i < 8; i++) {
-		printf("%02x ", (char)*(input_data + i + 0x10) & 0xFF);
-	}
-
-	printf("% 50.3f", altitude);
 
 	if (
 		(throttle > 12 || ground_speed > 3) &&

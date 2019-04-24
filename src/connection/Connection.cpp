@@ -79,6 +79,18 @@ void Connection::send_shutdown() {
 #endif
 }
 
+void Connection::send_open_waypoints(std::string file_path) {
+#if CAN_SEND_COMMANDS == 1
+	char size = (char)file_path.size();
+	char command_size = 3 + size;
+	char command[command_size] = { 2, 4, size };
+	std::memcpy(command + 3, file_path.data(), size);
+	if (tcp_is_open) {
+		send(tcp_command_socket, command, command_size, 0);
+	}
+#endif
+}
+
 void Connection::send_rtl() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 5 };

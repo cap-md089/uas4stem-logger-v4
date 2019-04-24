@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <cstring>
 #include <string>
+#include <iostream>
 
 #ifdef _WIN32
 #include <ShlObj.h>

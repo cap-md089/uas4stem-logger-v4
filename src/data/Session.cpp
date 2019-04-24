@@ -30,7 +30,7 @@ void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, in
 	time(&rawtime);
 	time_info = localtime(&rawtime);
 
-	strftime(file_name, MAX_TIME_LENGTH, "Flight %a %Y-%m-%d %H-%M", time_info);
+	strftime(file_name, MAX_TIME_LENGTH, "Flight %Y-%m-%d %H-%M", time_info);
 
 	strcat(location, "\\");
 	strcat(location, file_name);

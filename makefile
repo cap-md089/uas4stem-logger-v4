@@ -9,8 +9,8 @@ GTK_CFLAGS := -mms-bitfields -pthread -mms-bitfields -I/mingw64/include/gtk-3.0 
 
 BASE_DIR := -I$(pwd)/src
 
-out/main: out/guimain.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
-	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guimain.o out/main.o $(GTK_LIBS)
+out/main: out/guimain.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o out/utm.o
+	$(LINK) $(GTK_CFLAGS) -o out/main out/utm.o out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guimain.o out/main.o $(GTK_LIBS)
 
 out/math.o: src/math/Vector3D.cpp
 	$(COMPILE) -o out/math.o src/math/Vector3D.cpp
@@ -32,6 +32,9 @@ out/config.o: src/config/config.cpp
 
 out/session.o: src/data/Session.cpp
 	$(COMPILE) -o out/session.o src/data/Session.cpp
+
+out/utm.o: src/math/UTM.cpp
+	$(COMPILE) -o out/utm.o src/math/UTM.cpp
 
 clean:
 	rm out/main

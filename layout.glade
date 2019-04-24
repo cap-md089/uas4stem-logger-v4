@@ -38,6 +38,7 @@
                 <property name="width_request">120</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="margin_right">34</property>
                 <property name="editable">False</property>
               </object>
               <packing>
@@ -57,6 +58,7 @@
                   <object class="GtkLabel" id="cameraSize">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="xalign">0</property>
                     <property name="label" translatable="yes">Camera size</property>
                   </object>
                   <packing>
@@ -513,6 +515,7 @@
           <object class="GtkLabel" id="flightLbl">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="margin_top">1</property>
             <property name="label" translatable="yes">Flight</property>
           </object>
           <packing>
@@ -607,8 +610,11 @@
                   <object class="GtkLabel" id="altitudeCheckOutput">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="xalign">0</property>
+                    <property name="yalign">0.49000000953674316</property>
                     <property name="xpad">15</property>
                     <property name="ypad">10</property>
+                    <property name="label" translatable="yes">Camera size:</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -640,18 +646,51 @@
           </packing>
         </child>
         <child>
-          <object class="GtkBox" id="box1">
+          <object class="GtkBox" id="flightPlaneBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
+            <property name="spacing">20</property>
             <child>
-              <placeholder/>
+              <object class="GtkButton" id="generateFlightPlan">
+                <property name="label" translatable="yes">Generate Flight Plan</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel" id="availableCoordinatesLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="xalign">0</property>
+                <property name="label" translatable="yes">Available Coordinates</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkBox" id="possibleCoordinates">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
             </child>
           </object>
           <packing>
@@ -713,10 +752,19 @@
               </packing>
             </child>
             <child>
-              <object class="GtkTextView" id="scrabbleOutputs">
+              <object class="GtkScrolledWindow" id="scrabbleOutputWindow">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="editable">False</property>
+                <property name="hscrollbar_policy">never</property>
+                <property name="vscrollbar_policy">always</property>
+                <property name="shadow_type">in</property>
+                <child>
+                  <object class="GtkTextView" id="scrabbleOutput">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="editable">False</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="expand">False</property>

@@ -16,21 +16,21 @@ typedef struct RecordedCoordinates {
 class CurrentState {
 	public:
 		CurrentState();
-		unsigned int get_time_in_air() const;
 		double get_latitude() const;
 		double get_longitude() const;
+		double get_altitude() const;
+		double get_roll() const;
+		double get_pitch() const;
+		double get_yaw() const;
+		unsigned int get_time_in_air() const;
 		float get_battery_voltage() const;
 		float get_battery_remaining() const;
-		double get_altitude() const;
 		float get_ground_speed() const;
 		float get_throttle() const;
 		float get_dist_to_home() const;
 		float get_vertical_speed() const;
 		float get_rtl_speed() const;
 		float get_rtl_land_speed() const;
-		double get_roll() const;
-		double get_pitch() const;
-		double get_yaw() const;
 		float get_time_required_for_landing() const;
 
 		bool get_armed() const;
@@ -60,23 +60,23 @@ class CurrentState {
 		void (*update_callback)(CurrentState*) = NULL;
 	private:
 		unsigned int previous_time_in_air = 0;
-		unsigned int time_in_air;
+
 		double latitude;
 		double longitude;
+		double altitude;
+		double roll;
+		double pitch;
+		double yaw;
+		unsigned int time_in_air;
 		float battery_voltage;
 		float battery_remaining;
-		double altitude;
 		float ground_speed;
 		float throttle;
 		float dist_to_home;
 		float vertical_speed;
 		float rtl_speed;
 		float rtl_land_speed;
-		double roll;
-		double pitch;
-		double yaw;
 		float time_required_for_landing;
-
 		bool armed;
 
 		time_t takeoff_timestamp;
