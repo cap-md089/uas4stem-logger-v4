@@ -13,6 +13,10 @@ class Vector3D {
 		void setX(double xc);
 		void setY(double yc);
 		void setZ(double zc);
+
+		void rotate_yaw(double theta);
+		void rotate_roll(double theta);
+		void rotate_pitch(double theta);
 	private:
 		double x;
 		double y;
@@ -34,7 +38,7 @@ void get_xy_view_of_uav(
 	double pitch, double roll, double yaw,
 	double altitude,
 	double lat, double lng,
-	double left, double right
+	double left, double forward
 );
 
 #endif

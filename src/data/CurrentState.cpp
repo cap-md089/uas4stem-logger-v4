@@ -8,6 +8,13 @@
 #include <inttypes.h>
 #include <time.h>
 
+// Used for playing a beep when the waypoint number changes
+// because I forget to keep track...
+#ifdef _WIN32
+#include <Windows.h>
+#include <mmsystem.h>
+#endif
+
 const char header[5] = {
 	'C', 'S', 'D', 'A', 'T'
 };
@@ -21,8 +28,31 @@ CurrentState::CurrentState() {
 	landed_callback = NULL;
 	update_callback = NULL;
 	previous_time_in_air = 0;
+	flying = false;
 	takeoff_timestamp = 0;
+	continuing_flight = false;
 	recording_coordinates = false;
+	std::vector<RecordedCoordinates*> coordinates_being_recorded;
+	recording_coordinates = false;
+
+	latitude = 0;
+	longitude = 0;
+	altitude = 0;
+	roll = 0;
+	pitch = 0;
+	yaw = 0;
+	time_in_air = 0;
+	battery_voltage = 0;
+	battery_remaining = 0;
+	ground_speed = 0;
+	throttle = 0;
+	dist_to_home = 0;
+	vertical_speed = 0;
+	rtl_speed = 0;
+	rtl_land_speed = 0;
+	time_required_for_landing = 0;
+	armed = false;
+	waypoint_number = 0;
 }
 
 int CurrentState::update(const char* input, int length) {
@@ -32,13 +62,14 @@ int CurrentState::update(const char* input, int length) {
 
 	if (
 		std::memcmp(input,			header, 5) != 0 ||
-		std::memcmp(input+ 0x5E,	footer, 5) != 0
+		std::memcmp(input+ 0x5F,	footer, 5) != 0
 	) {
 		return 2;
 	}
 
 	const char* input_data = input + 5;
-	int ptime_in_air = get_time_in_air();
+	ptime_in_air = get_time_in_air();
+	int wpno = get_waypoint_number();
 
 	std::memcpy(&latitude,						input_data,			8);
 	std::memcpy(&longitude,						input_data + 0x08,	8);
@@ -57,28 +88,19 @@ int CurrentState::update(const char* input, int length) {
 	std::memcpy(&rtl_land_speed,				input_data + 0x50,	4);
 	std::memcpy(&time_required_for_landing,		input_data + 0x54,	4);
 	std::memcpy(&armed,							input_data + 0x58,	1);
+	std::memcpy(&waypoint_number,				input_data + 0x59,	1);
 
 	if (
 		(throttle > 12 || ground_speed > 3) &&
 		armed &&
 		!flying
 	) {
-		flying = true;
-		takeoff_timestamp = time(NULL);
-		if (flying_callback != NULL) (*flying_callback)(this);
+		takeoff();
 	} else if (
 		((throttle < 12 && ground_speed < 3) || !armed) &&
 		flying
 	) {
-		if (landed_callback != NULL) (*landed_callback)(this, continuing_flight);
-		flying = false;
-
-		if (continuing_flight) {
-			previous_time_in_air += ptime_in_air;
-			continuing_flight = false;
-		} else {
-			previous_time_in_air = 0;
-		}
+		land();
 	}
 
 	if (update_callback != NULL) (*update_callback)(this);
@@ -91,10 +113,10 @@ int CurrentState::update(const char* input, int length) {
 			roll, pitch, yaw,
 			altitude,
 			latitude, longitude,
-			(double)left_percent, (double)right_percent
+			(double)left_percent, (double)forward_percent
 		);
 
-		RecordedCoordinates* rec = (RecordedCoordinates*)malloc(sizeof(RecordedCoordinates));
+		RecordedCoordinates* rec = new RecordedCoordinates;
 		rec->latitude = x;
 		rec->longitude = y;
 
@@ -104,7 +126,39 @@ int CurrentState::update(const char* input, int length) {
 		coordinates_being_recorded.push_back(rec);
 	}
 
+	if (wpno != get_waypoint_number()) {
+#ifdef _WIN32
+		PlaySound(TEXT("SystemStart"), NULL, SND_ALIAS);
+#endif
+	}
+
 	return 0;
+}
+
+void CurrentState::land() {
+	if (landed_callback != NULL) (*landed_callback)(this, continuing_flight);
+	flying = false;
+
+	if (continuing_flight) {
+		previous_time_in_air += ptime_in_air;
+		continuing_flight = false;
+	} else {
+		previous_time_in_air = 0;
+	}
+}
+
+void CurrentState::force_land() {
+	land();
+}
+
+void CurrentState::takeoff() {
+	flying = true;
+	takeoff_timestamp = time(NULL);
+	if (flying_callback != NULL) (*flying_callback)(this);
+}
+
+void CurrentState::force_takeoff() {
+	takeoff();
 }
 
 unsigned int CurrentState::get_time_in_air() const {
@@ -190,6 +244,10 @@ float CurrentState::get_time_required_for_landing() const {
 	return time_required_for_landing;
 }
 
+uint8_t CurrentState::get_waypoint_number() const {
+	return waypoint_number;
+}
+
 void CurrentState::continue_flight() {
 	continuing_flight = true;
 }
@@ -198,10 +256,10 @@ bool CurrentState::get_recording() {
 	return recording_coordinates;
 }
 
-void CurrentState::start_recording(float lp, float rp) {
+void CurrentState::start_recording(float lp, float fp) {
 	recording_coordinates = true;
 	left_percent = lp;
-	right_percent = rp;
+	forward_percent = fp;
 }
 
 RecordedCoordinates* CurrentState::stop_recording() {

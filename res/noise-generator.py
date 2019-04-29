@@ -21,6 +21,7 @@ class CurrentState :
 	yaw = 0
 	verticalspeed = 0
 	armed = False
+	wpno = 0
 
 	flying = False
 
@@ -238,7 +239,7 @@ def serialize_current_state() :
 
 	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<ddddddifffffffff?",
+		"<ddddddifffffffff?B",
 		cs.lat,
 		cs.lng,
 		cs.alt,
@@ -255,7 +256,8 @@ def serialize_current_state() :
 		Script.GetParam('WPNAV_SPEED') / 100,
 		rtl_land_speed,
 		time_required_to_rtl,
-		cs.armed
+		cs.armed,
+		cs.wpno
 	))
 	packed.extend(['C', 'S', 'E', 'N', 'D'])
 

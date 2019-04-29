@@ -30,6 +30,17 @@ print "Running"
 # This is used to close everything down safely
 shutdown = False
 
+def is_custom_build() :
+	custom = False
+	try :
+		# Our team uses a custom build that exposes this variable
+		custom = customBuild
+	except Exception as e :
+		custom = False
+	return custom
+
+print "Custom build of MissionPlanner: ", is_custom_build()
+
 """
 	Utility for converting string to array of numbers
 """
@@ -84,7 +95,9 @@ def receive_command_thread() :
 		if func == 4 :
 			# Maybe auto open a file specified, for the setup?
 			# Will need to pass a file path for that...
-			pass
+			path = conn.recv(data[1])
+			if is_custom_build() :
+				FlightPlanner.readQGC110wpfile(path)
 
 		if func == 5 :
 			Script.ChangeMode('RTL')
@@ -157,7 +170,7 @@ def serialize_current_state() :
 
 	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<ddddddifffffffff?",
+		"<ddddddifffffffff?B",
 		cs.lat,
 		cs.lng,
 		cs.alt,
@@ -174,7 +187,8 @@ def serialize_current_state() :
 		Script.GetParam('WPNAV_SPEED') / 100,
 		rtl_land_speed,
 		time_required_to_rtl,
-		cs.armed
+		cs.armed,
+		cs.wpno
 	))
 	packed.extend(['C', 'S', 'E', 'N', 'D'])
 

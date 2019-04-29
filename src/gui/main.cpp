@@ -281,15 +281,15 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 		sprintf(coordinates_description, "%2.6f, %2.6f", recorded->latitude, recorded->longitude);
 		gtk_label_set_text(recorded_coordinates_label, coordinates_description);
 	} else {
-		GtkComboBox* targetX = (GtkComboBox*)gtk_builder_get_object(builder, "targetPositionX");
-		GtkComboBox* targetY = (GtkComboBox*)gtk_builder_get_object(builder, "targetPositionY");
-		float targetXSelected, targetYSelected;
+		GtkComboBox* target_left = (GtkComboBox*)gtk_builder_get_object(builder, "targetPositionLeft");
+		GtkComboBox* target_forward = (GtkComboBox*)gtk_builder_get_object(builder, "targetPositionForward");
+		float target_left_selected, target_forward_selected;
 		
-		targetXSelected = gtk_combo_box_get_active(targetX) - 4.0f;
-		targetYSelected = gtk_combo_box_get_active(targetY) - 3.0f;
+		target_left_selected = gtk_combo_box_get_active(target_left) - 4.0f;
+		target_forward_selected = gtk_combo_box_get_active(target_forward) - 3.0f;
 
 		gtk_button_set_label(button, stopLabel);
-		currentState->start_recording(targetXSelected / 4, targetYSelected / 3);
+		currentState->start_recording(target_left_selected / -4, target_forward_selected / 3);
 		gtk_label_set_text(recorded_coordinates_label, recordingMsg);
 	}
 }
@@ -306,6 +306,10 @@ static void open_golf_button_click() {
 	dataConnection->open_golf_bottle();
 }
 
+static void close_golf_button_click() {
+	dataConnection->close_golf_bottle();
+}
+
 static void continue_flight() {
 	currentState->continue_flight();
 
@@ -313,10 +317,6 @@ static void continue_flight() {
 
 	GtkLabel* label = (GtkLabel*)gtk_builder_get_object(builder, "flightContinueStatus");
 	gtk_label_set_text(label, continuing_flight_label);
-}
-
-static void close_golf_button_click() {
-	dataConnection->close_golf_bottle();
 }
 
 static void toggle_arm_button_click() {
@@ -331,12 +331,12 @@ static void enable_auto() {
 	dataConnection->send_auto();
 }
 
-static void update_voltage_display_text(GtkTextView* voltage_box, const char* text) {
+static void append_to_gtk_text_view(GtkTextView* textview, const char* text) {
 	std::string newtext_string = text;
 	std::string oldtext_string;
 
 	GtkTextIter start_position, end_position;
-	GtkTextBuffer* buffer = gtk_text_view_get_buffer(voltage_box);
+	GtkTextBuffer* buffer = gtk_text_view_get_buffer(textview);
 	gtk_text_buffer_get_end_iter(buffer, &end_position);
 	gtk_text_buffer_get_start_iter(buffer, &start_position);
 	char* oldtext = (char*)gtk_text_buffer_get_text(buffer, (const GtkTextIter*)&start_position, (const GtkTextIter*)&end_position, true);
@@ -356,7 +356,7 @@ static int update_voltage_display(gpointer box) {
 		flight.battery_voltages.push_back(currentState->get_battery_voltage());
 		char newtext[20];
 		sprintf(newtext, "%2.3f\n", currentState->get_battery_voltage());
-		update_voltage_display_text(voltage_box, newtext);
+		append_to_gtk_text_view(voltage_box, newtext);
 		return G_SOURCE_CONTINUE;
 	} else {
 		checking_voltage = false;
@@ -460,7 +460,7 @@ static int end_voltage_display(gpointer obj) {
 
 	char stopped[28];
 	sprintf(stopped, "--- Flight %d stopped ---\n", flight_count);
-	update_voltage_display_text((GtkTextView*)obj, stopped);
+	append_to_gtk_text_view((GtkTextView*)obj, stopped);
 	g_source_remove(timeout_id);
 	timeout_id = 0;
 
@@ -472,7 +472,7 @@ static int start_voltage_display_update(gpointer obj) {
 
 	char started[28];
 	sprintf(started, "--- Flight %d started ---\n", flight_count);
-	update_voltage_display_text((GtkTextView*)obj, started);
+	append_to_gtk_text_view((GtkTextView*)obj, started);
 
 	update_voltage_display((gpointer)obj);
 
@@ -555,6 +555,61 @@ static void update_max_flight_time(gpointer entry) {
 	config->save();
 }
 
+static void update_scrabble_box(gpointer s_entry) {
+	GtkEntry* scrabble_entry = (GtkEntry*)s_entry;
+	GtkTextView* scrabble_box = (GtkTextView*)gtk_builder_get_object(builder, "scrabbleOutput");
+
+	const char* char_text = gtk_entry_get_text(scrabble_entry);
+	std::string text = char_text;
+
+	if (text.size() < 3) {
+		return;
+	}
+
+	std::ifstream file;
+	file.open("englishwords.txt", std::ifstream::in | std::ifstream::ate);
+
+	if (!file.good()) {
+		return;
+	}
+	
+	uint64_t size = file.tellg();
+
+	std::cout << size << std::endl;
+
+	char* buffer = new char[size];
+
+	file.read(buffer, size);
+
+	for (uint64_t i = 0; i < size; i++) {
+		bool is_valid = false;
+		uint8_t j = 0;
+
+		while ((*(buffer + i + j) != '\r') && !is_valid) {
+			for (unsigned char k = 0; (k < text.size()) && !is_valid; k++) {
+				if (text[k] == *(buffer + i + j)) {
+					is_valid = true;
+				}
+			}
+			j++;
+		}
+
+		if (is_valid) {
+			char* text = new char[j + 2];
+			std::memcpy(text, buffer + i, j);
+			text[j - 1] = '\n';
+			text[j] = '\0';
+			append_to_gtk_text_view(scrabble_box, text);
+
+			free(text);
+		}
+
+		j++;
+	}
+
+	free(buffer);
+}
+
 int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>* log, Connection* conn, Configuration* conf) {
 	dataConnection = conn;
 	currentState = cs;
@@ -620,6 +675,9 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 
 	obj = gtk_builder_get_object(builder, "generateFlightPlan");
 	g_signal_connect(obj, "clicked", G_CALLBACK(generate_flight_plan), NULL);
+
+	obj = gtk_builder_get_object(builder, "scrabbleInputsEntry");
+	g_signal_connect(obj, "changed", G_CALLBACK(update_scrabble_box), NULL);
 
 	currentState->update_callback = &current_state_update;
 	currentState->landed_callback = &stop_flying;

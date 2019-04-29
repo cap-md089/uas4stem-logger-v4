@@ -51,7 +51,6 @@
               <object class="GtkBox" id="flightData">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="margin_right">259</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">10</property>
                 <child>
@@ -94,6 +93,9 @@
                           <item translatable="yes">Battery 2</item>
                           <item translatable="yes">Battery 3</item>
                           <item translatable="yes">Battery 4</item>
+                          <item translatable="yes">Battery A</item>
+                          <item translatable="yes">Battery B</item>
+                          <item translatable="yes">Battery C</item>
                         </items>
                       </object>
                       <packing>
@@ -127,7 +129,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkComboBoxText" id="targetPositionX">
+                      <object class="GtkComboBoxText" id="targetPositionLeft">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="active">4</property>
@@ -152,7 +154,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkComboBoxText" id="targetPositionY">
+                      <object class="GtkComboBoxText" id="targetPositionForward">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="active">3</property>
@@ -418,7 +420,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                     <child>
@@ -431,7 +433,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">2</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                   </object>
@@ -465,7 +467,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                     <child>
@@ -477,7 +479,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">2</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                   </object>

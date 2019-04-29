@@ -6,7 +6,7 @@
 #include <vector>
 #include <time.h>
 
-#define IDEAL_PACKET_SIZE 99
+#define IDEAL_PACKET_SIZE 100
 
 typedef struct RecordedCoordinates {
 	double latitude;
@@ -32,6 +32,7 @@ class CurrentState {
 		float get_rtl_speed() const;
 		float get_rtl_land_speed() const;
 		float get_time_required_for_landing() const;
+		uint8_t get_waypoint_number() const;
 
 		bool get_armed() const;
 
@@ -58,8 +59,15 @@ class CurrentState {
 		void (*flying_callback)(CurrentState*) = NULL;
 		void (*landed_callback)(CurrentState*, bool) = NULL;
 		void (*update_callback)(CurrentState*) = NULL;
+
+		void force_takeoff();
+		void force_land();
 	private:
+		void takeoff();
+		void land();
+
 		unsigned int previous_time_in_air = 0;
+		unsigned int ptime_in_air = 0;
 
 		double latitude;
 		double longitude;
@@ -78,6 +86,7 @@ class CurrentState {
 		float rtl_land_speed;
 		float time_required_for_landing;
 		bool armed;
+		uint8_t waypoint_number;
 
 		time_t takeoff_timestamp;
 		bool flying;
@@ -85,7 +94,7 @@ class CurrentState {
 
 		bool recording_coordinates;
 		float left_percent;
-		float right_percent;
+		float forward_percent;
 		std::vector<RecordedCoordinates*> coordinates_being_recorded;
 };
 
