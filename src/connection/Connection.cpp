@@ -14,6 +14,8 @@
 #include <winsock.h>
 #else
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #endif
 
 #define CLIENT_PORT 1337
@@ -147,8 +149,12 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 
 		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
 			fprintf(stderr, "Could not bind socket");
+#ifdef _WIN32
 			closesocket(udp_data_socket);
 			WSACleanup();
+#else
+			close(udp_data_socket);
+#endif
 			exit(0);
 		}
 
@@ -170,7 +176,7 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 void Connection::udp_server_listen(CurrentState* cs) {
 	sockaddr_in client_address;
 
-	int client_addr_size = sizeof(client_address);
+	unsigned int client_addr_size = sizeof(client_address);
 
 	char buffer[IDEAL_PACKET_SIZE * 2] = { 0 };
 	int i = 0;
@@ -204,7 +210,7 @@ void Connection::python_client_connect() {
 
 	tcp_command_socket = socket(AF_INET, SOCK_STREAM, 0);
 
-	client_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+	client_address.sin_addr.s_addr = 0x7F000001;
 	client_address.sin_family = AF_INET;
 	client_address.sin_port = htons(CLIENT_PORT);
 
@@ -232,9 +238,11 @@ void Connection::stop() {
 	std::cout << "Closing channels" << std::endl;
 	// Close outgoing channel
 	send_shutdown();
-	closesocket(tcp_command_socket);
 #ifdef _WIN32
+	closesocket(tcp_command_socket);
 	WSACleanup();
+#else
+	close(tcp_command_socket);
 #endif
 	tcp_thread.join();
 

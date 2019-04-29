@@ -47,8 +47,8 @@ class Connection {
 		SOCKET udp_data_socket;
 		SOCKET tcp_command_socket;
 #else
-		socket udp_data_socket;
-		socket tcp_command_socket;
+		int udp_data_socket;
+		int tcp_command_socket;
 #endif
 
 		void send_shutdown();
