@@ -14,6 +14,8 @@
 #include <winsock.h>
 #else
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #endif
 
 const char header[5] = {
@@ -142,8 +144,12 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 
 		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
 			fprintf(stderr, "Could not bind socket");
+#ifdef _WIN32
 			closesocket(udp_data_socket);
 			WSACleanup();
+#else
+			close(udp_data_socket);
+#endif
 			exit(0);
 		}
 
@@ -241,7 +247,10 @@ void Connection::stop() {
 		closesocket(tcp_command_socket);
 	}
 #ifdef _WIN32
+	closesocket(tcp_server);
 	WSACleanup();
+#else
+	close(tcp_server);
 #endif
 	tcp_thread.join();
 
