@@ -6,7 +6,14 @@
 #include <vector>
 #include <time.h>
 
-#define IDEAL_PACKET_SIZE 100
+#define IDEAL_PACKET_SIZE 101
+
+#define UAV_MODE_UNDEFINED	(0)
+#define UAV_MODE_AUTO		(1)
+#define UAV_MODE_LOITER		(2)
+#define UAV_MODE_ALTHOLD	(3)
+#define UAV_MODE_GUIDED		(4)
+#define UAV_MODE_RTL		(5)
 
 typedef struct RecordedCoordinates {
 	double latitude;
@@ -87,6 +94,7 @@ class CurrentState {
 		float time_required_for_landing;
 		bool armed;
 		uint8_t waypoint_number;
+		uint8_t uav_mode;
 
 		time_t takeoff_timestamp;
 		bool flying;

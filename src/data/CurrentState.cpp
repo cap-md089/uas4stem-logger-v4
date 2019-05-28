@@ -53,6 +53,7 @@ CurrentState::CurrentState() {
 	time_required_for_landing = 0;
 	armed = false;
 	waypoint_number = 0;
+	uav_mode = UAV_MODE_UNDEFINED;
 }
 
 int CurrentState::update(const char* input, int length) {
@@ -62,7 +63,7 @@ int CurrentState::update(const char* input, int length) {
 
 	if (
 		std::memcmp(input,			header, 5) != 0 ||
-		std::memcmp(input+ 0x5F,	footer, 5) != 0
+		std::memcmp(input+ 0x60,	footer, 5) != 0
 	) {
 		return 2;
 	}
@@ -89,15 +90,16 @@ int CurrentState::update(const char* input, int length) {
 	std::memcpy(&time_required_for_landing,		input_data + 0x54,	4);
 	std::memcpy(&armed,							input_data + 0x58,	1);
 	std::memcpy(&waypoint_number,				input_data + 0x59,	1);
+	std::memcpy(&uav_mode,						input_data + 0x5A,	1);
 
 	if (
-		(throttle > 12 || ground_speed > 3) &&
+		(throttle > 12 || ground_speed > 3 || uav_mode == UAV_MODE_AUTO || altitude > 9.0) &&
 		armed &&
 		!flying
 	) {
 		takeoff();
 	} else if (
-		((throttle < 12 && ground_speed < 3) || !armed) &&
+		((throttle < 12 && ground_speed < 3 && uav_mode != UAV_MODE_AUTO && altitude < 9.0) || !armed) &&
 		flying
 	) {
 		land();

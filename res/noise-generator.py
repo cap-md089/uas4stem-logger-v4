@@ -6,6 +6,8 @@ import time
 import random
 import os
 
+import inputs
+
 class CurrentState :
 	timeInAir = 0
 	lat = (random.random() - 1) * 360
@@ -22,6 +24,7 @@ class CurrentState :
 	verticalspeed = 0
 	armed = False
 	wpno = 0
+	mode = 'Loiter'
 
 	flying = False
 
@@ -50,10 +53,13 @@ class CurrentState :
 cs = CurrentState()
 
 class ScriptRunner :
+
 	def GetParam(self, arg) :
 		return 10.00
 
 	def ChangeMode(self, mode) :
+		cs.mode = mode
+
 		if mode == 'AUTO' and not cs.flying :
 			cs.takeoff()
 
@@ -111,13 +117,11 @@ def receive_command_thread() :
 	global has_connection
 	global Script
 
-	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	server.bind(('127.0.0.1', 1337))
-	server.listen(5)
+	conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	while not shutdown :
 		has_connection = False
-		conn, addr = server.accept()
+		conn.connect(('127.0.0.1', 1337))
 
 		has_connection = True
 
@@ -207,6 +211,23 @@ def should_send_packet() :
 	)
 
 """
+	Takes the current mode and puts it into something like an enum for the C++ side
+"""
+def get_mode_number() :
+	if cs.mode.lower() == 'auto' :
+		return 1
+	elif cs.mode.lower() == 'loiter' :
+		return 2
+	elif cs.mode.lower() == 'althold' :
+		return 3
+	elif cs.mode.lower() == 'guided' :
+		return 4
+	elif cs.mode.lower() == 'rtl' :
+		return 5
+
+	return 0
+
+"""
 	Serializes the current state as a packet recognized by the C++ backend
 
 	Basically copies numbers over, but uses a header and footer to help be sure that everything is ok
@@ -239,7 +260,7 @@ def serialize_current_state() :
 
 	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<ddddddifffffffff?B",
+		"<ddddddifffffffff?BB",
 		cs.lat,
 		cs.lng,
 		cs.alt,
@@ -257,7 +278,8 @@ def serialize_current_state() :
 		rtl_land_speed,
 		time_required_to_rtl,
 		cs.armed,
-		cs.wpno
+		cs.wpno,
+		get_mode_number()
 	))
 	packed.extend(['C', 'S', 'E', 'N', 'D'])
 
@@ -281,6 +303,7 @@ def print_cs() :
 	print 'Time in air:', str(cs.timeInAir)
 	print 'Altitude:', str(cs.alt)
 	print 'Connected:', ('YES' if has_connection else 'NO')
+	print 'Mode:', cs.mode
 	print 'Battery voltage:', str(cs.battery_voltage)
 
 try :

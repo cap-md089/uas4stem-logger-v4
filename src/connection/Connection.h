@@ -13,6 +13,12 @@
 #include <sys/socket.h>
 #endif
 
+#define CLIENT_PORT 1337
+#define SERVER_PORT 54248
+
+#define CAN_SEND_COMMANDS 1
+
+
 class Connection {
 	public:
 		/**
@@ -38,17 +44,20 @@ class Connection {
 		void setup(CurrentState* cs, std::vector<std::string>* log);
 		void stop();
 
-		void python_client_connect();
+		//void python_client_connect();
+		void tcp_server_listen();
 		void udp_server_listen(CurrentState* cs);
 	private:
 		bool tcp_is_open;
 
 #ifdef _WIN32
 		SOCKET udp_data_socket;
-		SOCKET tcp_command_socket;
+		std::vector<SOCKET> tcp_command_sockets;
+		SOCKET tcp_server;
 #else
-		socket udp_data_socket;
-		socket tcp_command_socket;
+		int udp_data_socket;
+		std::vector<int> tcp_command_sockets;
+		int tcp_server;
 #endif
 
 		void send_shutdown();

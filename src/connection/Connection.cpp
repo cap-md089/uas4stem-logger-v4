@@ -16,11 +16,6 @@
 #include <sys/socket.h>
 #endif
 
-#define CLIENT_PORT 1337
-#define SERVER_PORT 54248
-
-#define CAN_SEND_COMMANDS 1
-
 const char header[5] = {
 	'C', 'S', 'D', 'A', 'T'
 };
@@ -28,7 +23,7 @@ const char header[5] = {
 void Connection::open_charlie_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 5, 1 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 4, 0);
 	}
 #endif
@@ -37,7 +32,7 @@ void Connection::open_charlie_bottle() {
 void Connection::close_charlie_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 5, 2 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 4, 0);
 	}
 #endif
@@ -46,7 +41,7 @@ void Connection::close_charlie_bottle() {
 void Connection::open_golf_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 6, 1 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 4, 0);
 	}
 #endif
@@ -55,7 +50,7 @@ void Connection::open_golf_bottle() {
 void Connection::close_golf_bottle() {
 #if CAN_SEND_COMMANDS == 1
 	char command[4] = { 3, 1, 6, 2 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 4, 0);
 	}
 #endif
@@ -64,7 +59,7 @@ void Connection::close_golf_bottle() {
 void Connection::toggle_arm() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 2 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 2, 0);
 	}
 #endif
@@ -73,7 +68,7 @@ void Connection::toggle_arm() {
 void Connection::send_shutdown() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 3 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 2, 0);
 	}
 #endif
@@ -85,7 +80,7 @@ void Connection::send_open_waypoints(std::string file_path) {
 	char command_size = 3 + size;
 	char command[command_size] = { 2, 4, size };
 	std::memcpy(command + 3, file_path.data(), size);
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, command_size, 0);
 	}
 #endif
@@ -94,7 +89,7 @@ void Connection::send_open_waypoints(std::string file_path) {
 void Connection::send_rtl() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 5 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 2, 0);
 	}
 #endif
@@ -103,7 +98,7 @@ void Connection::send_rtl() {
 void Connection::send_auto() {
 #if CAN_SEND_COMMANDS == 1
 	char command[2] = { 1, 6 };
-	if (tcp_is_open) {
+	for (auto& tcp_command_socket : tcp_command_sockets) {
 		send(tcp_command_socket, command, 2, 0);
 	}
 #endif
@@ -156,9 +151,8 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 	}
 
 #if CAN_SEND_COMMANDS == 1
-	// Make a connection to the Python server
-	tcp_is_open = false;
-	tcp_thread = std::thread(&Connection::python_client_connect, this);
+	// Start listening for client connections
+	tcp_thread = std::thread(&Connection::tcp_server_listen, this);
 #endif
 
 	// Start the server for the Python client
@@ -194,45 +188,58 @@ void Connection::udp_server_listen(CurrentState* cs) {
 		}	
 
 		packet_count++;
-
-		usleep(8000);
 	}
 }
 
-void Connection::python_client_connect() {
-	sockaddr_in client_address;
+void Connection::tcp_server_listen() {
+	WSADATA wsa;
+	SOCKET new_socket;
+	sockaddr_in client_address, server_address;
+	int c;
 
-	tcp_command_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+		std::cout << "Failed to initialize server (0): " << WSAGetLastError() << std::endl;
+		return;
+	}
 
-	client_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-	client_address.sin_family = AF_INET;
-	client_address.sin_port = htons(CLIENT_PORT);
+	if ((tcp_server = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+		std::cout << "Failed to initialize server (1): " << WSAGetLastError() << std::endl;
+		return;
+	}
 
-	int status = -1;
+	server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(CLIENT_PORT);
 
-	// Just leave the connection open
-	// We can close it later when we close down in Connection::close
-	while (status != 0) {
-		status = connect(tcp_command_socket, (sockaddr*)&client_address, sizeof(client_address));
+	if (bind(tcp_server, (sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
+		std::cout << "Failed to bind server: " << WSAGetLastError() << std::endl;
+		return;
+	}
 
-		if (status == -1) {
-#ifdef _WIN32
-			std::cout << "Connect error: " << WSAGetLastError() << std::endl;
-#endif
-			usleep(5000000);
+	listen(tcp_server, 3);
+
+	c = sizeof(struct sockaddr_in);
+
+	while (!should_stop) {
+		new_socket = accept(tcp_server, (struct sockaddr*)&client_address, &c);
+		if (new_socket == INVALID_SOCKET) {
+			std::cout << "Invalid connection incoming: " << WSAGetLastError() << std::endl;
+		} else {
+			tcp_command_sockets.push_back(new_socket);
 		}
 	}
 
-	std::cout << "TCP Channel open" << std::endl;
-
-	tcp_is_open = true;
+	closesocket(tcp_server);
+	WSACleanup();
 }
 
 void Connection::stop() {
 	std::cout << "Closing channels" << std::endl;
 	// Close outgoing channel
 	send_shutdown();
-	closesocket(tcp_command_socket);
+	for (auto& tcp_command_socket : tcp_command_sockets) {
+		closesocket(tcp_command_socket);
+	}
 #ifdef _WIN32
 	WSACleanup();
 #endif

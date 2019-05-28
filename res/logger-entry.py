@@ -10,7 +10,8 @@ sys.path.extend([
     "E:\\Python27\\Lib",
     "E:\\Python27\\Lib\\plat-win",
     "E:\\Python27\\Lib\\site-packages",
-    "C:\\WINDOWS\\SYSTEM32\\python27.zip"
+    "C:\\WINDOWS\\SYSTEM32\\python27.zip",
+	"."
 ])
 sys.path = list(set(sys.path))
 
@@ -24,6 +25,8 @@ import thread
 print "Threads imported"
 import time
 print "Time imported"
+import inputs
+print "Inputs imported"
 
 print "Running"
 
@@ -56,11 +59,8 @@ def buffer(string_input) :
 def receive_command_thread() :
 	global shutdown
 
-	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	server.bind(('127.0.0.1', 1337))
-	server.listen(5)
-
-	conn, addr = server.accept()
+	conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	conn.connect(('127.0.0.1', 1337))
 
 	print "Has connection"
 
@@ -143,6 +143,23 @@ def should_send_packet() :
 	)
 
 """
+	Takes the current mode and puts it into something like an enum for the C++ side
+"""
+def get_mode_number() :
+	if cs.mode.lower() == 'auto' :
+		return 1
+	elif cs.mode.lower() == 'loiter' :
+		return 2
+	elif cs.mode.lower() == 'althold' :
+		return 3
+	elif cs.mode.lower() == 'guided' :
+		return 4
+	elif cs.mode.lower() == 'rtl' :
+		return 5
+
+	return 0
+
+"""
 	Serializes the current state as a packet recognized by the C++ backend
 
 	Basically copies numbers over, but uses a header and footer to help be sure that everything is ok
@@ -170,7 +187,7 @@ def serialize_current_state() :
 
 	packed = ['C', 'S', 'D', 'A', 'T']
 	packed.extend(pack(
-		"<ddddddifffffffff?B",
+		"<ddddddifffffffff?BB",
 		cs.lat,
 		cs.lng,
 		cs.alt,
@@ -188,11 +205,17 @@ def serialize_current_state() :
 		rtl_land_speed,
 		time_required_to_rtl,
 		cs.armed,
-		cs.wpno
+		cs.wpno,
+		get_mode_number()
 	))
 	packed.extend(['C', 'S', 'E', 'N', 'D'])
 
 	return ''.join(packed)
+
+while 1 :
+	events = inputs.get_gamepad()
+	for event in events :
+		print (event.code)
 
 sending = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
