@@ -7,12 +7,13 @@
 #define SIDE_CAMERA_ANGLE 46.367543999867315345946421705557
 
 #define EARTH_RADIUS 6378137
+
 #ifndef PI
 #define PI 3.14159265358979
 #endif
 
-#define DEG_TO_RAD(deg) (deg / 180.0 * PI)
-#define RAD_TO_DEG(rad) (rad * 180.0 / PI)
+#define DEG_TO_RAD(deg) ((deg) / 180.0 * PI)
+#define RAD_TO_DEG(rad) ((rad) * 180.0 / PI)
 
 Vector3D::Vector3D(): x(0), y(0), z(0) {}
 Vector3D::Vector3D(Vector3D* other): x(other->getX()), y(other->getY()), z(other->getZ()) {}
@@ -47,8 +48,8 @@ void Vector3D::rotate_yaw(double theta) {
 	double sinTheta = sin(theta);
 	double cosTheta = cos(theta);
 
-	x = x * cosTheta - y * sinTheta;
-	y = y * cosTheta + x * sinTheta;
+	x = (x * cosTheta) - (y * sinTheta);
+	y = (y * cosTheta) + (x * sinTheta);
 }
 
 // X is rotated for pitch
@@ -56,8 +57,8 @@ void Vector3D::rotate_pitch(double theta) {
 	double sinTheta = sin(theta);
 	double cosTheta = cos(theta);
 
-	x = x * cosTheta - z * sinTheta;
-	z = z * cosTheta + x * sinTheta;
+	x = (x * cosTheta) - (z * sinTheta);
+	z = (z * cosTheta) + (x * sinTheta);
 }
 
 // Y is rotated for roll
@@ -65,8 +66,23 @@ void Vector3D::rotate_roll(double theta) {
 	double sinTheta = sin(theta);
 	double cosTheta = cos(theta);
 
-	y = y * cosTheta - z * sinTheta;
-	z = z * cosTheta + y * sinTheta;
+	std::cout << "theta: " << theta << std::endl;
+	std::cout << "theta (deg): " << RAD_TO_DEG(theta) << std::endl;
+	std::cout << "sin: " << sinTheta << std::endl;
+	std::cout << "cos: " << cosTheta << std::endl;
+	std::cout << "cos2,sin2: " << (sinTheta * sinTheta) << "," << (cosTheta * cosTheta) << std::endl;
+	std::cout << "cos2 + sin2: " << (sinTheta * sinTheta) + (cosTheta * cosTheta) << std::endl;
+
+	std::cout << "y,z: " << y << "," << z << std::endl;
+	std::cout << "y2,z2: " << (y * y) << "," << (z * z) << std::endl;
+	std::cout << "y2 + z2: " << ((y * y) + (z * z)) << std::endl;
+
+	y = (y * cosTheta) - (z * sinTheta);
+	z = (z * cosTheta) + (y * sinTheta);
+
+	std::cout << "y,z: " << y << "," << z << std::endl;
+	std::cout << "y2,z2: " << (y * y) << "," << (z * z) << std::endl;
+	std::cout << "y2 + z2: " << ((y * y) + (z * z)) << std::endl;
 }
 
 VectorLine3D::VectorLine3D(Vector3D* vector, double height): vec(vector), offset(height) {}
@@ -80,12 +96,13 @@ Vector3D* VectorLine3D::apply(double t) {
 }
 
 Vector3D* VectorLine3D::intersectWithXY() {
-	double t = -offset / (vec->getZ());
+	double t = -offset / vec->getZ();
+
+	std::cout << "t: " << t << std::endl;
 
 	return apply(t);
 }
 
-// Later I will use
 void get_xy_view_of_uav(
 	double* x, double* y,
 	double pitch, double roll, double yaw,
@@ -93,16 +110,17 @@ void get_xy_view_of_uav(
 	double lat, double lng,
 	double right, double forward
 ) {
+	std::cout << std::endl;
+
 	*x = lat;
 	*y = lng;
-
-	return;
 
 	Vector3D uav = { 0, 0, -1 };
 	Vector3D* uav_target;
 	VectorLine3D line = { &uav, altitude };
 
-	std::cout << "pitch,roll,yaw: " << (DEG_TO_RAD(pitch + FRONT_CAMERA_ANGLE * forward)) << "," << (DEG_TO_RAD(roll - SIDE_CAMERA_ANGLE * right)) << "," << (DEG_TO_RAD(yaw)) << std::endl;
+	std::cout << "x,y,z: " << uav.getX() << "," << uav.getY() << "," << uav.getZ() << std::endl;
+	std::cout << "pitch,roll,yaw: " << ((pitch + FRONT_CAMERA_ANGLE * forward)) << "," << ((roll - SIDE_CAMERA_ANGLE * right)) << "," << ((yaw)) << std::endl;
 	
 /*	double pitch_offset = DegToRad(FRONT_CAMERA_ANGLE * forward);
 	double roll_offset = DegToRad(SIDE_CAMERA_ANGLE * right);*/

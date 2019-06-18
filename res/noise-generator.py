@@ -6,8 +6,6 @@ import time
 import random
 import os
 
-import inputs
-
 class CurrentState :
 	timeInAir = 0
 	lat = (random.random() - 1) * 360

@@ -244,7 +244,11 @@ void Connection::stop() {
 	// Close outgoing channel
 	send_shutdown();
 	for (auto& tcp_command_socket : tcp_command_sockets) {
+#ifdef _WIN32
 		closesocket(tcp_command_socket);
+#else
+		close(tcp_command_socket);
+#endif
 	}
 #ifdef _WIN32
 	closesocket(tcp_server);
