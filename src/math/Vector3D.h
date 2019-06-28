@@ -33,6 +33,21 @@ class VectorLine3D {
 		double offset;
 };
 
+class Matrix3D {
+	public:
+		Matrix3D();
+		Matrix3D(double**);
+
+		double get(int, int);
+
+		void set(int, int, double);
+
+		Matrix3D* multiply(Matrix3D*);
+		Vector3D* apply(Vector3D*);
+	private:
+		double data[3][3];
+};
+
 void get_xy_view_of_uav(
 	double* x, double* y,
 	double pitch, double roll, double yaw,

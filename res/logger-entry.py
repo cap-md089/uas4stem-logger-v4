@@ -25,8 +25,6 @@ import thread
 print "Threads imported"
 import time
 print "Time imported"
-import inputs
-print "Inputs imported"
 
 print "Running"
 
@@ -211,11 +209,6 @@ def serialize_current_state() :
 	packed.extend(['C', 'S', 'E', 'N', 'D'])
 
 	return ''.join(packed)
-
-while 1 :
-	events = inputs.get_gamepad()
-	for event in events :
-		print (event.code)
 
 sending = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

@@ -140,7 +140,7 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 
 		server_address.sin_family = AF_INET;
 		server_address.sin_addr.s_addr = INADDR_ANY;
-		server_address.sin_port = htons(SERVER_PORT);
+		server_address.sin_port = htons(DATA_PORT);
 
 		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
 			fprintf(stderr, "Could not bind socket");
@@ -202,32 +202,42 @@ void Connection::tcp_server_listen() {
 	SOCKET new_socket;
 	sockaddr_in client_address, server_address;
 	int c;
+	char opt = 1;
 
 	if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
 		std::cout << "Failed to initialize server (0): " << WSAGetLastError() << std::endl;
 		return;
 	}
 
-	if ((tcp_server = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+	SOCKET lcl_tcp_server = socket(AF_INET, SOCK_STREAM, 0);
+	if (lcl_tcp_server == INVALID_SOCKET) {
 		std::cout << "Failed to initialize server (1): " << WSAGetLastError() << std::endl;
 		return;
 	}
 
-	server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(CLIENT_PORT);
+	if ((setsockopt(lcl_tcp_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) == SOCKET_ERROR) {
+		std::cout << "Failed to initialize server (2): " << WSAGetLastError() << std::endl;
+		return;
+	}
 
-	if (bind(tcp_server, (sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
+	server_address.sin_addr.s_addr = INADDR_ANY;
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(COMMAND_PORT);
+
+	if (bind(lcl_tcp_server, (sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
 		std::cout << "Failed to bind server: " << WSAGetLastError() << std::endl;
 		return;
 	}
 
-	listen(tcp_server, 3);
+	if (listen(lcl_tcp_server, 3) == SOCKET_ERROR) {
+		std::cout << "Failed to listen: " << WSAGetLastError() << std::endl;
+		return;
+	}
 
 	c = sizeof(struct sockaddr_in);
 
 	while (!should_stop) {
-		new_socket = accept(tcp_server, (struct sockaddr*)&client_address, &c);
+		new_socket = accept(lcl_tcp_server, (struct sockaddr*)&client_address, &c);
 		if (new_socket == INVALID_SOCKET) {
 			std::cout << "Invalid connection incoming: " << WSAGetLastError() << std::endl;
 		} else {
@@ -235,7 +245,7 @@ void Connection::tcp_server_listen() {
 		}
 	}
 
-	closesocket(tcp_server);
+	closesocket(lcl_tcp_server);
 	WSACleanup();
 }
 

@@ -103,6 +103,37 @@ Vector3D* VectorLine3D::intersectWithXY() {
 	return apply(t);
 }
 
+Matrix3D::Matrix3D() {
+	data[0][0] = 0;
+	data[0][1] = 0;
+	data[0][2] = 0;
+	data[1][0] = 0;
+	data[1][1] = 0;
+	data[1][2] = 0;
+	data[2][0] = 0;
+	data[2][1] = 0;
+	data[2][2] = 0;
+}
+Matrix3D::Matrix3D(double** newData) {
+	data[0][0] = newData[0][0];
+	data[0][1] = newData[0][1];
+	data[0][2] = newData[0][2];
+	data[1][0] = newData[1][0];
+	data[1][1] = newData[1][1];
+	data[1][2] = newData[1][2];
+	data[2][0] = newData[2][0];
+	data[2][1] = newData[2][1];
+	data[2][2] = newData[2][2];
+}
+
+void Matrix3D::set(int ix, int iy, double val) {
+	data[ix][iy] = val;
+}
+
+double Matrix3D::get(int ix, int iy) {
+	return data[ix][iy];
+}
+
 void get_xy_view_of_uav(
 	double* x, double* y,
 	double pitch, double roll, double yaw,

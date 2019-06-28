@@ -13,8 +13,8 @@
 #include <sys/socket.h>
 #endif
 
-#define CLIENT_PORT 1337
-#define SERVER_PORT 54248
+#define COMMAND_PORT 1337
+#define DATA_PORT 54248
 
 #define CAN_SEND_COMMANDS 1
 
