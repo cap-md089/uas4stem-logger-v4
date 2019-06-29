@@ -7,9 +7,11 @@ GTK_LIBS := $(shell pkg-config --libs gtk+-3.0)
 NCURSES_CFLAGS := $(shell pkg-config --cflags ncurses)
 NCURSES_LIBS := $(shell pkg-config --libs ncurses)
 
-WINDOWS_LIBS :=
+OS_LIBS :=
 ifdef OS
-	WINDOWS_LIBS := -lwinmm -lws2_32 -lshlwapi
+	OS_LIBS := -lwinmm -lws2_32 -lshlwapi
+else
+	OS_LIBS := -pthread
 endif
 
 vim: out/main-vim
@@ -17,10 +19,10 @@ gui: out/main
 all: vim gui
 
 out/main-vim: out/guivim.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
-	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guivim.o out/main.o $(NCURSES_LIBS) $(WINDOWS_LIBS)
+	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guivim.o out/main.o $(NCURSES_LIBS) $(OS_LIBS)
 
 out/main: out/guimain.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
-	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guimain.o out/main.o $(GTK_LIBS) $(WINDOWS_LIBS)
+	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guimain.o out/main.o $(GTK_LIBS) $(OS_LIBS)
 
 out/math.o: src/math/Vector3D.cpp
 	$(COMPILE) -o out/math.o src/math/Vector3D.cpp

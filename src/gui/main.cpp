@@ -575,8 +575,6 @@ static void update_scrabble_box(gpointer s_entry) {
 	
 	uint64_t size = file.tellg();
 
-	std::cout << size << std::endl;
-
 	char* buffer = new char[size];
 
 	file.read(buffer, size);
