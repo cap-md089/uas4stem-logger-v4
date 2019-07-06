@@ -159,7 +159,7 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		}
 
 		server_address.sin_family = AF_INET;
-		server_address.sin_addr.s_addr = INADDR_ANY;
+		server_address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 		server_address.sin_port = htons(DATA_PORT);
 
 		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
@@ -278,7 +278,7 @@ void Connection::tcp_server_listen() {
 		exit(0);
 	}
 
-	server_address.sin_addr.s_addr = INADDR_ANY;
+	server_address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(COMMAND_PORT);
 
