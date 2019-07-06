@@ -139,8 +139,23 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		sockaddr_in server_address;
 
 		if ((udp_data_socket = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
-			perror("Socket creation failed");
+			perror("UDP socket creation failed\n");
 			exit(EXIT_FAILURE);
+		}
+
+		struct timeval timeout_val;
+		timeout_val.tv_sec = 0;
+		timeout_val.tv_usec = 10000;
+
+		if (setsockopt(udp_data_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
+			fprintf(stderr, "Could not set UDP socket timeout\n");
+#ifdef _WIN32
+			closesocket(udp_data_socket);
+			WSACleanup();
+#else
+			close(udp_data_socket);
+#endif
+			exit(0);
 		}
 
 		server_address.sin_family = AF_INET;
@@ -148,7 +163,7 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		server_address.sin_port = htons(DATA_PORT);
 
 		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
-			fprintf(stderr, "Could not bind socket");
+			fprintf(stderr, "Could not bind UDP socket: %d\n", errno);
 #ifdef _WIN32
 			closesocket(udp_data_socket);
 			WSACleanup();
@@ -181,11 +196,16 @@ void Connection::udp_server_listen(CurrentState* cs) {
 	socklen_t client_addr_size;
 #endif
 
-	char buffer[IDEAL_PACKET_SIZE * 2] = { 0 };
+	char buffer[IDEAL_PACKET_SIZE] = { 0 };
 	int i = 0;
 	std::string buffer_as_string;
+	size_t received = 0;
 	while (!should_stop) {
-		recvfrom(udp_data_socket, buffer, IDEAL_PACKET_SIZE * 2, 0, (sockaddr*)&client_address, &client_addr_size);
+		received = recvfrom(udp_data_socket, buffer, IDEAL_PACKET_SIZE * 2, 0, (sockaddr*)&client_address, &client_addr_size);
+
+		if (received != IDEAL_PACKET_SIZE) {
+			continue;
+		}
 
 		while (
 			(buffer + i) < (buffer + IDEAL_PACKET_SIZE) &&
@@ -199,7 +219,7 @@ void Connection::udp_server_listen(CurrentState* cs) {
 		int update_status = cs->update(buffer + i, IDEAL_PACKET_SIZE);
 
 		if (update_status != 0) {
-			std::cout << "Invalid packet received; error code " << update_status << std::endl;
+			std::cerr << "Invalid packet received; error code " << update_status << std::endl;
 		}	
 
 		packet_count++;
@@ -221,7 +241,7 @@ void Connection::tcp_server_listen() {
 
 #ifdef _WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
-		std::cout << "Failed to initialize server (0): " << WSAGetLastError() << std::endl;
+		std::cerr << "Failed to initialize server (0): " << WSAGetLastError() << std::endl;
 		return;
 	}
 #endif
@@ -229,19 +249,34 @@ void Connection::tcp_server_listen() {
 	SOCKET lcl_tcp_server = socket(AF_INET, SOCK_STREAM, 0);
 	if (lcl_tcp_server == INVALID_SOCKET) {
 #if _WIN32
-		std::cout << "Failed to initialize server (1): " << WSAGetLastError() << std::endl;
+		std::cerr << "Failed to initialize tcp server (1): " << WSAGetLastError() << std::endl;
 #else
-		std::cout << "Failed to initialize server (1): " << errno << std::endl;
+		std::cerr << "Failed to initialize tcp server (1): " << errno << std::endl;
 #endif
 		return;
 	}
 
 #if _WIN32
 	if ((setsockopt(lcl_tcp_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) == SOCKET_ERROR) {
-		std::cout << "Failed to initialize server (2): " << WSAGetLastError() << std::endl;
+		std::cerr << "Failed to initialize tcp server (2): " << WSAGetLastError() << std::endl;
 		return;
 	}
 #endif
+
+	struct timeval timeout_val;
+	timeout_val.tv_sec = 0;
+	timeout_val.tv_usec = 10000;
+
+	if (setsockopt(lcl_tcp_server, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
+		fprintf(stderr, "Could not set socket timeout");
+#ifdef _WIN32
+		closesocket(udp_data_socket);
+		WSACleanup();
+#else
+		close(udp_data_socket);
+#endif
+		exit(0);
+	}
 
 	server_address.sin_addr.s_addr = INADDR_ANY;
 	server_address.sin_family = AF_INET;
@@ -249,18 +284,18 @@ void Connection::tcp_server_listen() {
 
 	if (bind(lcl_tcp_server, (sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
 #if _WIN32
-		std::cout << "Failed to bind server (2): " << WSAGetLastError() << std::endl;
+		std::cerr << "Failed to bind server (tcp) (2): " << WSAGetLastError() << std::endl;
 #else
-		std::cout << "Failed to bind server (2): " << errno << std::endl;
+		std::cerr << "Failed to bind server (tcp) (2): " << errno << std::endl;
 #endif
 		return;
 	}
 
 	if (listen(lcl_tcp_server, 3) == SOCKET_ERROR) {
 #if _WIN32
-		std::cout << "Failed to listen server (2): " << WSAGetLastError() << std::endl;
+		std::cerr << "Failed to listen server (tcp) (2): " << WSAGetLastError() << std::endl;
 #else
-		std::cout << "Failed to listen server (2): " << errno << std::endl;
+		std::cerr << "Failed to listen server (tcp) (2): " << errno << std::endl;
 #endif
 		return;
 	}
@@ -269,13 +304,7 @@ void Connection::tcp_server_listen() {
 
 	while (!should_stop) {
 		new_socket = accept(lcl_tcp_server, (struct sockaddr*)&client_address, &c);
-		if (new_socket == INVALID_SOCKET) {
-#if _WIN32
-		std::cout << "Invalid connection incoming: " << WSAGetLastError() << std::endl;
-#else
-		std::cout << "Invalid connection incoming: " << errno << std::endl;
-#endif
-		} else {
+		if (new_socket != INVALID_SOCKET) {
 			tcp_command_sockets.push_back(new_socket);
 		}
 	}
@@ -289,7 +318,8 @@ void Connection::tcp_server_listen() {
 }
 
 void Connection::stop() {
-	std::cout << "Closing channels" << std::endl;
+	should_stop = true;
+
 	// Close outgoing channel
 	send_shutdown();
 	for (auto& tcp_command_socket : tcp_command_sockets) {
@@ -308,7 +338,6 @@ void Connection::stop() {
 	tcp_thread.join();
 
 	// Close incoming channel
-	should_stop = true;
 	shutdown(udp_data_socket, 2);
 	close(udp_data_socket);
 	udp_thread.join();

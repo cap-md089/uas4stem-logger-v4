@@ -5,6 +5,8 @@ import thread
 import time
 import random
 import os
+import curses
+import array
 
 class CurrentState :
 	timeInAir = 0
@@ -90,6 +92,8 @@ sys.path.extend([
 ])
 sys.path = list(set(sys.path))
 
+error = ""
+
 # This is used to close everything down safely
 shutdown = False
 
@@ -108,35 +112,38 @@ def buffer(string_input) :
 """
 	A thread for listening on a TCP port and parsing the commands received
 """
-def receive_command_thread() :
+def receive_command_thread(stdscr) :
 	global shutdown
 	global MAV
 	global cs
 	global has_connection
 	global Script
+	global error
 
 	conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	while not shutdown :
 		has_connection = False
 		conn.connect(('127.0.0.1', 1337))
+		conn.setblocking(0)
+		conn.settimeout(0.1)
 
 		has_connection = True
 
 		while not shutdown :
 			try :
 				incoming_packet_size = conn.recv(1)
+			except socket.timeout as e :
+				continue
 			except Exception as e :
+				error = "Lost connection"
 				break
 			size = ord(incoming_packet_size[0])
 			incoming_packet = conn.recv(size)
 			data = buffer(incoming_packet)
 			func = data[0]
 
-			os.system('cls')
-			print "Received command: ", data
-			print_cs()
-			print ' > ',
+			print_cs(stdscr)
 
 			if func == 1 :
 				try :
@@ -145,23 +152,23 @@ def receive_command_thread() :
 					MAV.doCommand(MAV.MAV_CMD.DO_SET_SERVO, servo,
 						position, 0, 0, 0, 0, 0)
 				except Exception as e :
-					print "Could not set servo"
+					error = "Could not set servo"
 
 			if func == 2 :
 				try :
 					MAV.doARM(not cs.armed)
 				except Exception as e :
-					print "Could not toggle arm"
+					error = "Could not toggle arm"
 
 			if func == 3 :
-				print "Shutting down"
+				error = "Shutting down"
 				shutdown = True
 
 			if func == 4 :
 				# Maybe auto open a file specified, for the setup?
 				# Will need to pass a file path for that...
 				path = conn.recv(data[1])
-				print path
+				error = path
 
 			if func == 5 :
 				Script.ChangeMode('RTL')
@@ -169,7 +176,6 @@ def receive_command_thread() :
 			if func == 6 :
 				Script.ChangeMode('AUTO')
 
-	server.close()
 	print "Server gone. Good bye, client"
 
 """
@@ -186,7 +192,7 @@ def send_packets_thread(socket) :
 			data = socket.sendto(serialized_cs, ('127.0.0.1', 54248))
 
 			if data != len(serialized_cs) :
-				print "Packet failed to send"
+				error = "Packet failed to send"
 
 	print "Client gone. Good bye, server"
 
@@ -292,84 +298,89 @@ def update_cs() :
 		time.sleep(1)
 		cs.update()
 
-def print_cs() :
+def print_cs(stdscr) :
 	global has_connection
+	global error
 
-	print 'Flying:', ('YES' if cs.flying else 'NO')
-	print 'Armed:', ('YES' if cs.armed else 'NO')
-	print 'Lat,lng:', str(cs.lat) + ',' + str(cs.lng)
-	print 'Time in air:', str(cs.timeInAir)
-	print 'Altitude:', str(cs.alt)
-	print 'Connected:', ('YES' if has_connection else 'NO')
-	print 'Mode:', cs.mode
-	print 'Battery voltage:', str(cs.battery_voltage)
+	stdscr.addstr(0, 0, 'Flying: %s' % ('YES' if cs.flying else 'NO '))
+	stdscr.addstr(1, 0, 'Armed: %s' % ('YES' if cs.armed else 'NO '))
+	stdscr.addstr(2, 0, 'Lat,lng: %f, %f        ' % (cs.lat, cs.lng))
+	stdscr.addstr(3, 0, 'Time in air: %d    ' % cs.timeInAir)
+	stdscr.addstr(4, 0, 'Altitude: %f      ' % cs.alt)
+	stdscr.addstr(5, 0, 'Connected: %s' % ('YES' if has_connection else 'NO '))
+	stdscr.addstr(6, 0, 'Mode: %s       ' % cs.mode)
+	stdscr.addstr(7, 0, 'Battery voltage: %f      ' % cs.battery_voltage)
+	stdscr.addstr(8, 0, ' ' * stdscr.getmaxyx()[1])
+	stdscr.addstr(8, 0, error)
 
-try :
-	thread.start_new_thread(receive_command_thread, tuple([]))
-	thread.start_new_thread(send_packets_thread, tuple([sending]))
-	thread.start_new_thread(update_cs, tuple([]))
-except Exception as e :
-	print "Thread error: {0}".format(e)
-	
-while True :
-	print_cs()
-	cmd = raw_input(' > ');
-	cmds = cmd.lower().split(' ')
 
-	os.system('cls')
+def main(stdscr) :
+	global shutdown
+	global MAV
+	global cs
+	global has_connection
+	global Script
+	global error
 
-	if cmds[0] == 'stop' :
-		shutdown = True
-		break
-	elif cmds[0] == 'takeoff' :
-		if not cs.armed :
-			print 'Cannot takeoff when not armed'
-		else :
-			cs.takeoff()
-	elif cmds[0] == 'land' :
-		cs.land()
-	elif cmds[0] == 'arm' :
-		cs.armed = True
-	elif cmds[0] == 'disarm' :
-		if cs.flying :
-			print 'Cannot disarm while flying'
-		else :
-			cs.armed = False
-	elif cmds[0] == 'status' :
-		pass
-	elif cmds[0] == 'help' :
-		print """
-Available commands:
+	try :
+		thread.start_new_thread(receive_command_thread, tuple([stdscr]))
+		thread.start_new_thread(send_packets_thread, tuple([sending]))
+		thread.start_new_thread(update_cs, tuple([]))
+	except Exception as e :
+		print "Thread error: {0}".format(e)
 
-stop
-	stops program execution
 
-takeoff
-	makes the virtual UAV takeoff and hover
+	stdscr.nodelay(True)
+	current_input = []
 
-	only works if UAV is armed
+	stdscr.addstr(9, 0, ' > ')
 
-land
-	makes the virtual UAV land on the ground
+	while not shutdown :
+		print_cs(stdscr)
+		stdscr.move(9, 3 + len(current_input))
 
-arm
-	arms the virtual UAV
+		c = stdscr.getch()
 
-disarm
-	disarms the virtual UAV
+		if c != -1 :
+			if c == 127 :
+				if len(current_input) > 0 :
+					stdscr.addstr(9, 0, ' > %s' % (' ' * (len(current_input))))
+					current_input.pop()
+					cmd = array.array('B', current_input).tostring()
+					stdscr.addstr(9, 0, ' > %s' % cmd)
+			elif c == 10 :
+				cmd = array.array('B', current_input).tostring()
+				current_input = []
+				stdscr.addstr(9, 0, ' > %s' % (' ' * len(cmd)))
 
-status
-	updates the status display
+				cmds = cmd.lower().strip().split(' ')
 
-help
-	displays this help message
+				if cmds[0] == 'stop' :
+					shutdown = True
+					break
+				elif cmds[0] == 'takeoff' :
+					if not cs.armed :
+						error = 'Cannot takeoff when not armed'
+					else :
+						cs.takeoff()
+				elif cmds[0] == 'land' :
+					cs.land()
+				elif cmds[0] == 'arm' :
+					cs.armed = True
+				elif cmds[0] == 'disarm' :
+					if cs.flying :
+						error = 'Cannot disarm while flying'
+					else :
+						cs.armed = False
+				else :
+					error = 'Not a valid command: ' + cmds[0]
 
-Each command updates the status display
+			else :
+				current_input.append(c)
+				cmd = array.array('B', current_input).tostring()
+				stdscr.addstr(9, 0, ' > %s' % cmd)
 
-		"""
-	else :
-		print 'Not a valid command:', cmds[0]
+curses.wrapper(main)
 
 time.sleep(0.5)
-
 print "Shut down complete"
