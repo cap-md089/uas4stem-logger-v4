@@ -1,7 +1,7 @@
 from struct import pack, unpack
+from threading import Thread
 import socket
 import math
-import thread
 import time
 import random
 import os
@@ -176,7 +176,7 @@ def receive_command_thread(stdscr) :
 			if func == 6 :
 				Script.ChangeMode('AUTO')
 
-	print "Server gone. Good bye, client"
+	print("Command thread gone. Good bye, data thread")
 
 """
 	A simple thread to wait for a short time then send the current state over
@@ -194,7 +194,7 @@ def send_packets_thread(socket) :
 			if data != len(serialized_cs) :
 				error = "Packet failed to send"
 
-	print "Client gone. Good bye, server"
+	print("Data thread gone. Good bye, command thread")
 
 """
 	Used to determine if a packet should be sent
@@ -304,7 +304,7 @@ def print_cs(stdscr) :
 
 	stdscr.addstr(0, 0, 'Flying: %s' % ('YES' if cs.flying else 'NO '))
 	stdscr.addstr(1, 0, 'Armed: %s' % ('YES' if cs.armed else 'NO '))
-	stdscr.addstr(2, 0, 'Lat,lng: %f, %f        ' % (cs.lat, cs.lng))
+	stdscr.addstr(2, 0, 'Lat,lng: %f, %f	' % (cs.lat, cs.lng))
 	stdscr.addstr(3, 0, 'Time in air: %d    ' % cs.timeInAir)
 	stdscr.addstr(4, 0, 'Altitude: %f      ' % cs.alt)
 	stdscr.addstr(5, 0, 'Connected: %s' % ('YES' if has_connection else 'NO '))
@@ -313,6 +313,9 @@ def print_cs(stdscr) :
 	stdscr.addstr(8, 0, ' ' * stdscr.getmaxyx()[1])
 	stdscr.addstr(8, 0, error)
 
+receive_command_thread_handle = None
+send_packets_thread_handle = None
+update_cs_handle = None
 
 def main(stdscr) :
 	global shutdown
@@ -321,14 +324,21 @@ def main(stdscr) :
 	global has_connection
 	global Script
 	global error
+	global receive_command_thread_handle
+	global send_packets_thread_handle
+	global update_cs_handle
+
+	receive_command_thread_handle = Thread(target=receive_command_thread, args=tuple([stdscr]))
+	send_packets_thread_handle = Thread(target=send_packets_thread, args=tuple([sending]))
+	update_cs_handle = Thread(target=update_cs)
 
 	try :
-		thread.start_new_thread(receive_command_thread, tuple([stdscr]))
-		thread.start_new_thread(send_packets_thread, tuple([sending]))
-		thread.start_new_thread(update_cs, tuple([]))
+		receive_command_thread_handle.start()
+		send_packets_thread_handle.start()
+		update_cs_handle.start()
 	except Exception as e :
-		print "Thread error: {0}".format(e)
-
+		print("Thread error: {0}".format(e))
+		sys.exit(0)
 
 	stdscr.nodelay(True)
 	current_input = []
@@ -382,5 +392,8 @@ def main(stdscr) :
 
 curses.wrapper(main)
 
-time.sleep(0.5)
-print "Shut down complete"
+receive_command_thread_handle.join()
+send_packets_thread_handle.join()
+update_cs_handle.join()
+
+print("Shut down complete")
