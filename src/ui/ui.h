@@ -4,7 +4,6 @@
 #include "../data/CurrentState.h"
 #include "../connection/Connection.h"
 #include "../config/config.h"
-#include <gtk/gtk.h>
 #include <vector>
 #include <string>
 #include <cstring>

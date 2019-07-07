@@ -685,10 +685,5 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 
 	gtk_main();
 
-	free(dataConnection);
-	free(currentState);
-	free(config);
-	free(builder);
-
 	return 0;
 }

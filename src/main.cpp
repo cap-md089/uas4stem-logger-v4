@@ -1,19 +1,11 @@
 #include "data/CurrentState.h"
 #include "connection/Connection.h"
 #include "config/config.h"
+#include "ui/ui.h"
 #include <vector>
 #include <string>
 #include <cstring>
 #include <iostream>
-
-int start_gui (
-	int,
-	char**,
-	CurrentState*,
-	std::vector<std::string>*,
-	Connection*,
-	Configuration*
-);
 
 int main (int argc, char **argv) {
 	std::vector<std::string> user_log;

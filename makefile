@@ -18,11 +18,11 @@ vim: out/main-vim
 gui: out/main
 all: vim gui
 
-out/main-vim: out/guivim.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
-	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guivim.o out/main.o $(NCURSES_LIBS) $(OS_LIBS)
+out/main-vim: out/cursesui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
+	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/cursesui.o out/main.o $(NCURSES_LIBS) $(OS_LIBS)
 
-out/main: out/guimain.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
-	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/guimain.o out/main.o $(GTK_LIBS) $(OS_LIBS)
+out/main: out/gtkui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
+	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/gtkui.o out/main.o $(GTK_LIBS) $(OS_LIBS)
 
 out/math.o: src/math/Vector3D.cpp
 	$(COMPILE) -o out/math.o src/math/Vector3D.cpp
@@ -33,11 +33,11 @@ out/main.o: src/main.cpp
 out/currentstate.o: src/data/CurrentState.cpp
 	$(COMPILE) -o out/currentstate.o src/data/CurrentState.cpp -lwinmm
 
-out/guimain.o: src/gui/main.cpp
-	$(COMPILE) $(GTK_CFLAGS) -o out/guimain.o src/gui/main.cpp $(GTK_LIBS)
+out/gtkui.o: src/ui/gtk.cpp
+	$(COMPILE) $(GTK_CFLAGS) -o out/gtkui.o src/ui/gtk.cpp $(GTK_LIBS)
 
-out/guivim.o: src/gui/guivim.cpp
-	$(COMPILE) $(NCURSES_CFLAGS) -o out/guivim.o src/gui/guivim.cpp $(NCURSES_LIBS)
+out/cursesui.o: src/ui/curses.cpp
+	$(COMPILE) $(NCURSES_CFLAGS) -o out/cursesui.o src/ui/curses.cpp $(NCURSES_LIBS)
 
 out/connection.o: src/connection/Connection.cpp
 	$(COMPILE) -o out/connection.o -pthread src/connection/Connection.cpp -lws2_32
