@@ -42,7 +42,7 @@ class Connection {
 		/**
 		 * Controls from the main thread to start and stop the connection client and server
 		 */
-		void setup(CurrentState* cs, std::vector<std::string>* log);
+		int setup(CurrentState* cs, std::vector<std::string>* log);
 		void stop();
 
 		//void python_client_connect();
@@ -53,7 +53,7 @@ class Connection {
 
 		SOCKET udp_data_socket;
 		std::vector<SOCKET> tcp_command_sockets;
-		SOCKET tcp_server;
+		SOCKET tcp_command_socket;
 
 		void send_shutdown();
 

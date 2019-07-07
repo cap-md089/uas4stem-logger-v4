@@ -13,7 +13,11 @@ int main (int argc, char **argv) {
 	Connection conn;
 	Configuration conf;
 
-	conn.setup(&cs, &user_log);
+	int setup_status = conn.setup(&cs, &user_log);
+	if (setup_status != EXIT_SUCCESS) {
+		return setup_status;
+	}
+
 	conf.open();
 
 	int gui_status = start_gui(argc, argv, &cs, &user_log, &conn, &conf);

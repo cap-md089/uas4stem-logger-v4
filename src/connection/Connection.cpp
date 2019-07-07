@@ -23,6 +23,12 @@ typedef int SOCKET;
 #define SOCKET_ERROR -1
 #endif
 
+#ifdef _WIN32
+#define ERROR (WSAGetLastError())
+#else
+#define ERROR (errno)
+#endif
+
 const char header[5] = {
 	'C', 'S', 'D', 'A', 'T'
 };
@@ -126,7 +132,7 @@ double Connection::get_packets_per_second() {
 	return pps;
 }
 
-void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
+int Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 #ifdef _WIN32
 	WSADATA winblows_data;
 	WSAStartup(MAKEWORD(2, 0), &winblows_data);
@@ -139,8 +145,8 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		sockaddr_in server_address;
 
 		if ((udp_data_socket = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
-			perror("UDP socket creation failed\n");
-			exit(EXIT_FAILURE);
+			std::cerr << "UDP socket creation failed: " << ERROR << std::endl;
+			return ERROR;
 		}
 
 		struct timeval timeout_val;
@@ -148,14 +154,14 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		timeout_val.tv_usec = 10000;
 
 		if (setsockopt(udp_data_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
-			fprintf(stderr, "Could not set UDP socket timeout\n");
+			std::cerr << "UDP socket timeout set failure: " << ERROR << std::endl;
 #ifdef _WIN32
 			closesocket(udp_data_socket);
 			WSACleanup();
 #else
 			close(udp_data_socket);
 #endif
-			exit(0);
+			return ERROR;
 		}
 
 		server_address.sin_family = AF_INET;
@@ -163,28 +169,72 @@ void Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		server_address.sin_port = htons(DATA_PORT);
 
 		if (bind(udp_data_socket, (sockaddr*)&server_address, sizeof(server_address))) {
-			fprintf(stderr, "Could not bind UDP socket: %d\n", errno);
+			std::cerr << "Could not bind UDP socket: " << ERROR << std::endl;
 #ifdef _WIN32
 			closesocket(udp_data_socket);
 			WSACleanup();
 #else
 			close(udp_data_socket);
 #endif
-			exit(0);
+			return EXIT_FAILURE;
 		}
 
 		listen(udp_data_socket, 5);
 	}
 
 #if CAN_SEND_COMMANDS == 1
+	{
+		sockaddr_in server_address;
+#ifdef _WIN32
+		char opt = 1;
+#else
+		int opt = 1;
+#endif
+
+		if ((tcp_command_socket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+			std::cerr << "TCP socket creation failed: " << ERROR << std::endl;
+			return ERROR;
+		}
+
+		if (setsockopt(tcp_command_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == SOCKET_ERROR) {
+			std::cerr << "Failed to setup TCP socket" << ERROR << std::endl;
+			return ERROR;
+		}
+
+		struct timeval timeout_val;
+		timeout_val.tv_sec = 0;
+		timeout_val.tv_usec = 10000;
+
+		if (setsockopt(tcp_command_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
+			std::cerr << "Could not set TCP socket timeout: " << ERROR << std::endl;
+			return ERROR;
+		}
+
+		server_address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		server_address.sin_family = AF_INET;
+		server_address.sin_port = htons(COMMAND_PORT);
+
+		if (bind(tcp_command_socket, (sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
+			std::cerr << "Failed to bind TCP server: " << ERROR << std::endl;
+			return ERROR;
+		}
+
+		if (listen(tcp_command_socket, 3) == SOCKET_ERROR) {
+			std::cerr << "Failed to set TCP server to listen: " << ERROR << std::endl;
+			return ERROR;
+		}
+	}
+
 	// Start listening for client connections
-	tcp_thread = std::thread(&Connection::tcp_server_listen, this);
+	this->tcp_thread = std::thread(&Connection::tcp_server_listen, this);
 #endif
 
 	// Start the server for the Python client
 	// DO NOT REMOVE THE `THIS`
 	// C++ will then create a local variable (???) throwing terminates as the variable is dereferenced??
 	this->udp_thread = std::thread(&Connection::udp_server_listen, this, cs);
+
+	return EXIT_SUCCESS;
 }
 
 void Connection::udp_server_listen(CurrentState* cs) {
@@ -227,96 +277,28 @@ void Connection::udp_server_listen(CurrentState* cs) {
 }
 
 void Connection::tcp_server_listen() {
-#ifdef _WIN32
-	WSADATA wsa;
-#endif
 	SOCKET new_socket;
-	sockaddr_in client_address, server_address;
+	sockaddr_in client_address;
 #ifdef _WIN32
 	int c;
-	char opt = 1;
 #else
 	socklen_t c;
-	int opt = 1;
 #endif
-
-#ifdef _WIN32
-	if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
-		std::cerr << "Failed to initialize server (0): " << WSAGetLastError() << std::endl;
-		return;
-	}
-#endif
-
-	SOCKET lcl_tcp_server = socket(AF_INET, SOCK_STREAM, 0);
-	if (lcl_tcp_server == INVALID_SOCKET) {
-#if _WIN32
-		std::cerr << "Failed to initialize tcp server (1): " << WSAGetLastError() << std::endl;
-#else
-		std::cerr << "Failed to initialize tcp server (1): " << errno << std::endl;
-#endif
-		return;
-	}
-
-	if ((setsockopt(lcl_tcp_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) == SOCKET_ERROR) {
-#if _WIN32
-		std::cerr << "Failed to initialize tcp server (2): " << WSAGetLastError() << std::endl;
-#else
-		std::cerr << "Failed to initialize tcp server (2): " << errno << std::endl;
-#endif
-		return;
-	}
-
-	struct timeval timeout_val;
-	timeout_val.tv_sec = 0;
-	timeout_val.tv_usec = 10000;
-
-	if (setsockopt(lcl_tcp_server, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
-		fprintf(stderr, "Could not set socket timeout");
-#ifdef _WIN32
-		closesocket(udp_data_socket);
-		WSACleanup();
-#else
-		close(udp_data_socket);
-#endif
-		exit(0);
-	}
-
-	server_address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(COMMAND_PORT);
-
-	if (bind(lcl_tcp_server, (sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
-#if _WIN32
-		std::cerr << "Failed to bind server (tcp) (2): " << WSAGetLastError() << std::endl;
-#else
-		std::cerr << "Failed to bind server (tcp) (2): " << errno << std::endl;
-#endif
-		return;
-	}
-
-	if (listen(lcl_tcp_server, 3) == SOCKET_ERROR) {
-#if _WIN32
-		std::cerr << "Failed to listen server (tcp) (2): " << WSAGetLastError() << std::endl;
-#else
-		std::cerr << "Failed to listen server (tcp) (2): " << errno << std::endl;
-#endif
-		return;
-	}
 
 	c = sizeof(struct sockaddr_in);
 
 	while (!should_stop) {
-		new_socket = accept(lcl_tcp_server, (struct sockaddr*)&client_address, &c);
+		new_socket = accept(tcp_command_socket, (struct sockaddr*)&client_address, &c);
 		if (new_socket != INVALID_SOCKET) {
 			tcp_command_sockets.push_back(new_socket);
 		}
 	}
 
 #ifdef _WIN32
-	closesocket(lcl_tcp_server);
+	closesocket(tcp_command_socket);
 	WSACleanup();
 #else
-	close(lcl_tcp_server);
+	close(tcp_command_socket);
 #endif
 }
 
@@ -325,19 +307,19 @@ void Connection::stop() {
 
 	// Close outgoing channel
 	send_shutdown();
-	for (auto& tcp_command_socket : tcp_command_sockets) {
 #ifdef _WIN32
-		closesocket(tcp_command_socket);
-#else
-		close(tcp_command_socket);
-#endif
+	for (auto& c_sock : tcp_command_sockets) {
+		closesocket(c_sock);
 	}
-#ifdef _WIN32
-	closesocket(tcp_server);
+	closesocket(tcp_command_socket);
 	WSACleanup();
 #else
-	close(tcp_server);
+	for (auto& c_sock : tcp_command_sockets) {
+		close(c_sock);
+	}
+	close(tcp_command_socket);
 #endif
+
 	tcp_thread.join();
 
 	// Close incoming channel
