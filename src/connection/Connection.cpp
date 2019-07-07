@@ -237,6 +237,7 @@ void Connection::tcp_server_listen() {
 	char opt = 1;
 #else
 	socklen_t c;
+	int opt = 1;
 #endif
 
 #ifdef _WIN32
@@ -256,12 +257,14 @@ void Connection::tcp_server_listen() {
 		return;
 	}
 
-#if _WIN32
 	if ((setsockopt(lcl_tcp_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) == SOCKET_ERROR) {
+#if _WIN32
 		std::cerr << "Failed to initialize tcp server (2): " << WSAGetLastError() << std::endl;
+#else
+		std::cerr << "Failed to initialize tcp server (2): " << errno << std::endl;
+#endif
 		return;
 	}
-#endif
 
 	struct timeval timeout_val;
 	timeout_val.tv_sec = 0;

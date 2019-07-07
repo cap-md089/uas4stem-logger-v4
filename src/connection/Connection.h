@@ -11,6 +11,7 @@
 #include <winsock.h>
 #else
 #include <sys/socket.h>
+typedef int SOCKET;
 #endif
 
 #define COMMAND_PORT 1337
@@ -50,15 +51,9 @@ class Connection {
 	private:
 		bool tcp_is_open;
 
-#ifdef _WIN32
 		SOCKET udp_data_socket;
 		std::vector<SOCKET> tcp_command_sockets;
 		SOCKET tcp_server;
-#else
-		int udp_data_socket;
-		std::vector<int> tcp_command_sockets;
-		int tcp_server;
-#endif
 
 		void send_shutdown();
 
