@@ -243,7 +243,7 @@ void Connection::udp_server_listen(CurrentState* cs) {
 #ifdef _WIN32
 	int client_addr_size = sizeof(client_address);
 #else
-	socklen_t client_addr_size;
+	socklen_t client_addr_size = sizeof(client_address);
 #endif
 
 	char buffer[IDEAL_PACKET_SIZE] = { 0 };

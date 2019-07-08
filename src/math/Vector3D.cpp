@@ -134,6 +134,36 @@ double Matrix3D::get(int ix, int iy) {
 	return data[ix][iy];
 }
 
+Matrix3D* Matrix3D::multiply(Matrix3D* other) {
+	double** _d = (double**)other->data;
+	double** nd = new double*[3];
+
+	nd[0][0] = data[0][0] * _d[0][0] + data[0][1] * _d[1][0] + data[0][2] * _d[2][0];
+	nd[0][1] = data[0][0] * _d[0][1] + data[0][1] * _d[1][1] + data[0][2] * _d[2][1];
+	nd[0][2] = data[0][0] * _d[0][2] + data[0][1] * _d[1][2] + data[0][2] * _d[2][2];
+	nd[1][0] = data[1][0] * _d[0][0] + data[1][1] * _d[1][0] + data[1][2] * _d[2][0];
+	nd[1][1] = data[1][0] * _d[0][1] + data[1][1] * _d[1][1] + data[1][2] * _d[2][1];
+	nd[1][2] = data[1][0] * _d[0][2] + data[1][1] * _d[1][2] + data[1][2] * _d[2][2];
+	nd[2][0] = data[2][0] * _d[0][0] + data[2][1] * _d[1][0] + data[2][2] * _d[2][0];
+	nd[2][1] = data[2][0] * _d[0][1] + data[2][1] * _d[1][1] + data[2][2] * _d[2][1];
+	nd[2][2] = data[2][0] * _d[0][2] + data[2][1] * _d[1][2] + data[2][2] * _d[2][2];
+
+	Matrix3D* result = new Matrix3D(nd);
+	delete nd[0];
+	delete nd[1];
+	delete nd[2];
+	delete nd;
+	return result;
+}
+
+Vector3D* Matrix3D::apply(Vector3D* vec) {
+	return new Vector3D(
+		data[0][0] * vec->getX() + data[0][1] * vec->getY() + data[0][2] * vec->getZ(),
+		data[1][0] * vec->getX() + data[1][1] * vec->getY() + data[1][2] * vec->getZ(),
+		data[2][0] * vec->getX() + data[2][1] * vec->getY() + data[0][2] * vec->getZ()
+	);
+}
+
 void get_xy_view_of_uav(
 	double* x, double* y,
 	double pitch, double roll, double yaw,
