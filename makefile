@@ -18,8 +18,8 @@ vim: out/main-vim
 gui: out/main
 all: vim gui
 
-out/main-vim: out/cursesui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
-	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/cursesui.o out/main.o $(NCURSES_LIBS) $(OS_LIBS)
+out/main-vim: out/cursesui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o out/command_arm.o
+	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/command_arm.o out/cursesui.o out/main.o $(NCURSES_LIBS) $(OS_LIBS)
 
 out/main: out/gtkui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
 	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/gtkui.o out/main.o $(GTK_LIBS) $(OS_LIBS)
@@ -47,6 +47,9 @@ out/config.o: src/config/config.cpp
 
 out/session.o: src/data/Session.cpp
 	$(COMPILE) -o out/session.o src/data/Session.cpp
+
+out/command_arm.o: src/ui/commands/arm.cpp
+	$(COMPILE) -o out/command_arm.o src/ui/commands/arm.cpp
 
 clean:
 	rm out/*

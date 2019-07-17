@@ -1,4 +1,4 @@
-#include "CurrentState.h"
+#include "./CurrentState.h"
 #include "../math/Vector3D.h"
 #include <stdlib.h>
 #include <string>
@@ -27,6 +27,9 @@ CurrentState::CurrentState() {
 	flying_callback = NULL;
 	landed_callback = NULL;
 	update_callback = NULL;
+	start_recording_callback = NULL;
+	stop_recording_callback = NULL;
+
 	previous_time_in_air = 0;
 	flying = false;
 	takeoff_timestamp = 0;
@@ -262,6 +265,7 @@ void CurrentState::start_recording(float lp, float fp) {
 	recording_coordinates = true;
 	left_percent = lp;
 	forward_percent = fp;
+	if (start_recording_callback != NULL) start_recording_callback(this);
 }
 
 RecordedCoordinates* CurrentState::stop_recording() {
@@ -296,6 +300,8 @@ RecordedCoordinates* CurrentState::stop_recording() {
 
 	returnValue->latitude = x;
 	returnValue->longitude = y;
+
+	if (stop_recording_callback != NULL) stop_recording_callback(this, returnValue);
 
 	return returnValue;
 }

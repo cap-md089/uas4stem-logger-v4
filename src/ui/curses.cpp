@@ -2,6 +2,7 @@
 #include "../data/Session.h"
 #include "../connection/Connection.h"
 #include "../config/config.h"
+
 #include <ncurses.h>
 #include <cstring>
 #include <string>
@@ -28,6 +29,7 @@
 
 static WINDOW* menu_window;
 static WINDOW* main_window;
+static WINDOW* command_window;
 
 static Connection* dataConnection;
 static CurrentState* currentState;
@@ -37,15 +39,17 @@ static CurrentFlight overall_flight;
 
 //static int flight_count = 0;
 //static int timeout_id;
+static char* current_target_label = NULL;
 
 static std::vector<bool> selected_coordinates;
 
-static int current_menu_selected_item = 0;
 static int current_selected_menu = 0;
 static bool is_menu_selected = true;
-static bool is_entering_command = false;
 static bool has_update = true;
 static bool should_stop = false;
+
+static bool is_entering_command = false;
+static char* command_prompt = NULL;
 
 static double camera_width(double alt) {
 	return 2 * 1.04891304331  * alt;
@@ -55,7 +59,7 @@ static double camera_depth(double alt) {
 	return 2 * 0.489130434783 * alt;
 }
 
-void render_menu_selector(WINDOW* win) {
+static void render_menu_selector(WINDOW* win) {
 	wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
 
 	init_pair(COLOR_SELECTED_MENU_ITEM, COLOR_BLACK, COLOR_WHITE);
@@ -112,8 +116,35 @@ void render_menu_selector(WINDOW* win) {
 	wrefresh(win);
 }
 
-void render_command_bar() {
+static void clear_command_bar(WINDOW* win) {
+	mvwhline(win, 1, 1, ' ', COLS - 2);
 
+	wrefresh(win);
+	refresh();
+}
+
+static void render_command_bar(WINDOW* win) {
+	clear_command_bar(win);
+
+	mvwaddch(win, 1, 1, ':');
+	mvwaddstr(win, 1, 2, command_prompt);
+
+	wrefresh(win);
+	refresh();
+}
+
+static void handle_command_bar_keypress(int ch, WINDOW* win) {
+	int len = strlen(command_prompt);
+
+	if (ch == 10) { // Newline, execute command
+		
+	} else if (ch == 127) { // Backspace
+		command_prompt[len - 1] = 0;
+	} else if (ch > 0x20 && ch < 0x7F) { // Alpha-numeric and special characters
+		command_prompt[len] = (char)(ch & 0xFF);
+	}
+
+	render_command_bar(win);
 }
 
 static void update_camera_size(WINDOW* win, CurrentState* cs) {
@@ -139,20 +170,59 @@ static void update_camera_size(WINDOW* win, CurrentState* cs) {
 		"             Area: %4.1f m^2;     ",
 		area
 	);
-
-	wrefresh(win);
-	wrefresh(main_window);
-	refresh();
 }
 
 static void update_lat_lng(WINDOW* win, CurrentState* cs) {
+	mvwprintw(
+		win,
+		3, 2,
+		"Lat: % 4.6f, Lng: % 4.6f",
+		cs->get_latitude(),
+		cs->get_longitude()
+	);
+}
 
+static void update_recording(WINDOW* win, CurrentState* cs) {
+	mvwprintw(
+		win,
+		4, 2,
+		"Recording: %d. Current label: %s",
+		cs->get_recording(),
+		current_target_label == NULL ? "" : current_target_label
+	);
+}
+
+static void update_continuing_flight(WINDOW* win, CurrentState* cs) {
+	mvwprintw(
+		win,
+		5, 2,
+		"Continuing flight: %s",
+		cs->get_continuing_flight() ? "YES" : "NO "
+	);
+}
+
+static void update_armed_status(WINDOW* win, CurrentState* cs) {
+	mvwprintw(
+		win,
+		6, 2,
+		"Currently armed: %s",
+		cs->get_armed() ? "YES" : "NO "
+	);
 }
 
 static void render_main_window(CurrentState* cs) {
 	if (has_update && current_selected_menu == 0) {
-		has_update = false;
 		update_camera_size(main_window, cs);
+		update_lat_lng(main_window, cs);
+		update_recording(main_window, cs);
+		update_continuing_flight(main_window, cs);
+		update_armed_status(main_window, cs);
+	}
+
+	if (has_update) {
+		has_update = false;
+		wrefresh(main_window);
+		refresh();
 	}
 }
 
@@ -225,10 +295,14 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 	refresh();
 
 	menu_window = newwin(3, 0, 0, 0);
-	main_window = newwin(LINES - 2, 0, 2, 0);
+	main_window = newwin(LINES - 4, 0, 2, 0);
+	command_window = newwin(3, 0, LINES - 3, 0);
+	command_prompt = new char[COLS - 3];
 
 	wborder(main_window, '|', '|', '-', '-', '+', '+', '+', '+');
+	wborder(command_window, '|', '|', '-', '-', '+', '+', '+', '+');
 	wrefresh(main_window);
+	wrefresh(command_window);
 
 	render_menu_selector(menu_window);
 
@@ -236,18 +310,30 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 	//currentState->landed_callback = &stop_flying;
 	//currentState->flying_callback = &start_flying;
 	
-	timeout(100);
+	timeout(50);
 
 	while (!should_stop) {
 		int ch = getch();
-		if (is_menu_selected) {
-			handle_menu_keypress(ch);
-		} else if (is_entering_command) {
-
+		if (ch == ':') {
+			is_entering_command = true;
+			render_command_bar(command_window);
 		} else if (ch == 27) {	
-			is_menu_selected = true;
-			has_update = true;
-			render_menu_selector(menu_window);
+			if (is_entering_command) {
+				command_prompt = new char[COLS - 3];
+				clear_command_bar(command_window);
+				is_entering_command = false;
+				has_update = true;
+				render_main_window(cs);
+			} else {
+				is_menu_selected = true;
+				has_update = true;
+				render_menu_selector(menu_window);
+			}
+		} else if (is_entering_command) {
+			handle_command_bar_keypress(ch, command_window);
+			render_command_bar(command_window);
+		} else if (is_menu_selected) {
+			handle_menu_keypress(ch);
 		} else if (current_selected_menu == MENU_MAIN) {
 			handle_main_window_keypress(ch);
 		}

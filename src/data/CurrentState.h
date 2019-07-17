@@ -66,6 +66,8 @@ class CurrentState {
 		void (*flying_callback)(CurrentState*) = NULL;
 		void (*landed_callback)(CurrentState*, bool) = NULL;
 		void (*update_callback)(CurrentState*) = NULL;
+		void (*start_recording_callback)(CurrentState*) = NULL;
+		void (*stop_recording_callback)(CurrentState*, RecordedCoordinates*) = NULL;
 
 		void force_takeoff();
 		void force_land();
