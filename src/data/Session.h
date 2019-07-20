@@ -19,6 +19,6 @@ typedef struct CurrentFlight {
 
 void clear_flight(CurrentFlight*);
 
-void save_flight(Configuration*, CurrentFlight*, int time_in_air, int battery_id);
+void save_flight(Configuration*, CurrentFlight*, int time_in_air, const char* battery_id);
 
 #endif

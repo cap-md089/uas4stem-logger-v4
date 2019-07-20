@@ -497,6 +497,16 @@ static int stop_flying_label(gpointer lbl) {
 	return G_SOURCE_REMOVE;
 }
 
+static const char* names[] = {
+	"Battery 1",
+	"Battery 2",
+	"Battery 3",
+	"Battery 4",
+	"Battery A",
+	"Battery B",
+	"Battery C"
+};
+
 static void stop_flying(CurrentState* cs, bool continued) {
 	GObject* obj;
 
@@ -512,7 +522,7 @@ static void stop_flying(CurrentState* cs, bool continued) {
 		config,
 		&flight,
 		cs->get_battery_timer(),
-		gtk_combo_box_get_active((GtkComboBox*)obj)
+		names[gtk_combo_box_get_active((GtkComboBox*)obj)]
 	);
 
 	clear_flight(&flight);

@@ -3,6 +3,8 @@
 #include "../connection/Connection.h"
 #include "../config/config.h"
 
+#include "commands/commands.h"
+
 #include <ncurses.h>
 #include <cstring>
 #include <string>
@@ -40,6 +42,7 @@ static CurrentFlight overall_flight;
 //static int flight_count = 0;
 //static int timeout_id;
 static char* current_target_label = NULL;
+static char* battery_name = NULL;
 
 static std::vector<bool> selected_coordinates;
 
@@ -58,6 +61,8 @@ static double camera_width(double alt) {
 static double camera_depth(double alt) {
 	return 2 * 0.489130434783 * alt;
 }
+
+static void render_main_window(CurrentState*);
 
 static void render_menu_selector(WINDOW* win) {
 	wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
@@ -134,13 +139,76 @@ static void render_command_bar(WINDOW* win) {
 }
 
 static void handle_command_bar_keypress(int ch, WINDOW* win) {
-	int len = strlen(command_prompt);
+	size_t len = strlen(command_prompt);
 
 	if (ch == 10) { // Newline, execute command
+		int argc = 1;
+		for (size_t i = 0; i < len; i++) {
+			if (command_prompt[i] == ' ') {
+				argc++;
+			}
+		}
+
+		char** argv = new char*[argc];
+		int cargc = 0;
+		for (size_t i = 0; i < len; i++) {
+			int arglen = 0;
+			for (size_t j = i; j <= len; j++) {
+				if (j == len || command_prompt[j] == ' ') {
+					arglen = j - i;
+					break;
+				}
+			}
+			
+			argv[cargc] = new char[arglen + 1];
+			for (size_t j = i; j < i + arglen; j++) {
+				argv[cargc][j - i] = command_prompt[j];
+			}
+			argv[cargc][arglen] = '\0';
+
+			cargc++;
+			i += arglen;
+		}
+
+		if (strncmp(command_prompt, "arm", 3) == 0) {
+			command_function_arm(dataConnection, currentState);
+		}
+
+		if (strncmp(command_prompt, "open", 4) == 0) {
+			command_function_open(argc, argv, dataConnection);
+		}
+
+		if (strncmp(command_prompt, "close", 5) == 0) {
+			command_function_close(argc, argv, dataConnection);
+		}
+
+		if (strncmp(command_prompt, "cont", 4) == 0) {
+			command_function_continue_flight(currentState);
+		}
+
+		if (strncmp(command_prompt, "disarm", 6) == 0) {
+			command_function_disarm(dataConnection, currentState);
+		}
+
+		if (strncmp(command_prompt, "set", 3) == 0) {
+			command_function_set(argc, argv, &current_target_label);
+		}
+
+		for (int i = 0; i < argc; i++) {
+			delete[] argv[i];
+		}
+		delete[] argv;
+		delete[] command_prompt;
 		
+		is_entering_command = false;
+		command_prompt = new char[COLS - 3];
+		clear_command_bar(win);
+
+		has_update = true;
+		render_main_window(currentState);
 	} else if (ch == 127) { // Backspace
 		command_prompt[len - 1] = 0;
-	} else if (ch > 0x20 && ch < 0x7F) { // Alpha-numeric and special characters
+	} else if (ch >= 0x20 && ch < 0x7F) { // Alpha-numeric and special characters
 		command_prompt[len] = (char)(ch & 0xFF);
 	}
 
@@ -210,6 +278,15 @@ static void update_armed_status(WINDOW* win, CurrentState* cs) {
 	);
 }
 
+static void update_current_battery(WINDOW* win) {
+	mvwprintw(
+		win,
+		7, 2,
+		"Current battery: %s",
+		battery_name == NULL ? "" : battery_name
+	);
+}
+
 static void render_main_window(CurrentState* cs) {
 	if (has_update && current_selected_menu == 0) {
 		update_camera_size(main_window, cs);
@@ -217,6 +294,7 @@ static void render_main_window(CurrentState* cs) {
 		update_recording(main_window, cs);
 		update_continuing_flight(main_window, cs);
 		update_armed_status(main_window, cs);
+		update_current_battery(main_window);
 	}
 
 	if (has_update) {
@@ -319,6 +397,7 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 			render_command_bar(command_window);
 		} else if (ch == 27) {	
 			if (is_entering_command) {
+				delete[] command_prompt;
 				command_prompt = new char[COLS - 3];
 				clear_command_bar(command_window);
 				is_entering_command = false;

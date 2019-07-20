@@ -19,7 +19,7 @@ void clear_flight(CurrentFlight* flight) {
 	flight->targets.clear();
 }
 
-void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, int battery_id) {
+void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, const char* battery_id) {
 	char location[MAX_PATH];
 	conf->get_data_dir_location(location);
 	char file_name[MAX_TIME_LENGTH];
@@ -45,11 +45,11 @@ void save_flight(Configuration* conf, CurrentFlight* flight, int time_in_air, in
 
 	fs << file_name << std::endl;
 	fs << "Time in air: " << time_in_air << std::endl;
-	fs << "Battery ID (0-based): " << battery_id << std::endl;
+	fs << "Battery ID: " << battery_id << std::endl;
 	fs << std::endl;
 	std::cout << file_name << std::endl;
 	std::cout << "Time in air: " << time_in_air << ";" << std::endl;
-	std::cout << "Battery ID (0-based): " << battery_id << ";" << std::endl;
+	std::cout << "Battery ID: " << battery_id << ";" << std::endl;
 	std::cout << std::endl;
 	
 	fs << "--- Targets found ---" << std::endl;
