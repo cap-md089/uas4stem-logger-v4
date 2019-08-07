@@ -95,6 +95,8 @@ int CurrentState::update(const char* input, int length) {
 	std::memcpy(&waypoint_number,				input_data + 0x59,	1);
 	std::memcpy(&uav_mode,						input_data + 0x5A,	1);
 
+	std::cout << uav_mode << std::endl;
+
 	if (
 		(throttle > 12 || ground_speed > 3 || uav_mode == UAV_MODE_AUTO || altitude > 9.0) &&
 		armed &&

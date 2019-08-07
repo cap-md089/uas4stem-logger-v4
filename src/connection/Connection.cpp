@@ -33,38 +33,20 @@ const char header[5] = {
 	'C', 'S', 'D', 'A', 'T'
 };
 
-void Connection::open_charlie_bottle() {
+void Connection::open_balloon_dropper() {
 #if CAN_SEND_COMMANDS == 1
-	char command[4] = { 3, 1, 5, 1 };
+	char command[3] = { 2, 1, 1 };
 	for (auto& tcp_command_socket : tcp_command_sockets) {
-		send(tcp_command_socket, command, 4, 0);
+		send(tcp_command_socket, command, 3, 0);
 	}
 #endif
 }
 
-void Connection::close_charlie_bottle() {
+void Connection::close_balloon_dropper() {
 #if CAN_SEND_COMMANDS == 1
-	char command[4] = { 3, 1, 5, 2 };
+	char command[3] = { 2, 1, 2 };
 	for (auto& tcp_command_socket : tcp_command_sockets) {
-		send(tcp_command_socket, command, 4, 0);
-	}
-#endif
-}
-
-void Connection::open_golf_bottle() {
-#if CAN_SEND_COMMANDS == 1
-	char command[4] = { 3, 1, 6, 1 };
-	for (auto& tcp_command_socket : tcp_command_sockets) {
-		send(tcp_command_socket, command, 4, 0);
-	}
-#endif
-}
-
-void Connection::close_golf_bottle() {
-#if CAN_SEND_COMMANDS == 1
-	char command[4] = { 3, 1, 6, 2 };
-	for (auto& tcp_command_socket : tcp_command_sockets) {
-		send(tcp_command_socket, command, 4, 0);
+		send(tcp_command_socket, command, 3, 0);
 	}
 #endif
 }
@@ -117,6 +99,14 @@ void Connection::send_auto() {
 #endif
 }
 
+void Connection::send_command(char* command, size_t length) {
+#if CAN_SEND_COMMANDS == 1
+	for (auto& tcp_command_socket : tcp_command_sockets) {
+		send(tcp_command_socket, command, length, 0);
+	}
+#endif
+}
+
 double Connection::get_packets_per_second() {
 	std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
 	std::chrono::duration<double, std::milli> diff = timestamp - last_packet_clear;
@@ -153,7 +143,11 @@ int Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		timeout_val.tv_sec = 0;
 		timeout_val.tv_usec = 10000;
 
+#ifdef _WIN32
+		if (setsockopt(udp_data_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_val, sizeof(timeout_val)) < 0) {
+#else
 		if (setsockopt(udp_data_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
+#endif
 			std::cerr << "UDP socket timeout set failure: " << ERROR << std::endl;
 #ifdef _WIN32
 			closesocket(udp_data_socket);
@@ -205,7 +199,11 @@ int Connection::setup(CurrentState* cs, std::vector<std::string>* log) {
 		timeout_val.tv_sec = 0;
 		timeout_val.tv_usec = 10000;
 
+#ifdef _WIN32
+		if (setsockopt(tcp_command_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_val, sizeof(timeout_val)) < 0) {
+#else
 		if (setsockopt(tcp_command_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) < 0) {
+#endif
 			std::cerr << "Could not set TCP socket timeout: " << ERROR << std::endl;
 			return ERROR;
 		}

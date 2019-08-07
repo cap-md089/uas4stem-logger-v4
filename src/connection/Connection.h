@@ -26,13 +26,12 @@ class Connection {
 		 * Commands that can be sent to the Python client
 		 */
 		void toggle_arm();
-		void open_charlie_bottle();
-		void close_charlie_bottle();
-		void open_golf_bottle();
-		void close_golf_bottle();
+		void open_balloon_dropper();
+		void close_balloon_dropper();
 		void send_rtl();
 		void send_auto();
 		void send_open_waypoints(std::string);
+		void send_command(char* message, size_t length);
 
 		/**
 		 * Nice for the operator to know how good the connection is

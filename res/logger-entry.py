@@ -73,9 +73,8 @@ def receive_command_thread() :
 
 		if func == 1 :
 			try :
-				servo = data[1]
-				position = data[2] * 1000
-				MAV.doCommand(MAV.MAV_CMD.DO_SET_SERVO, servo,
+				position = data[1] * 1000 + 400
+				MAV.doCommand(MAV.MAV_CMD.DO_SET_SERVO, 6,
 					position, 0, 0, 0, 0, 0)
 			except Exception as e :
 				print "Could not set servo"
@@ -144,6 +143,7 @@ def should_send_packet() :
 	Takes the current mode and puts it into something like an enum for the C++ side
 """
 def get_mode_number() :
+	print cs.mode.lower()
 	if cs.mode.lower() == 'auto' :
 		return 1
 	elif cs.mode.lower() == 'loiter' :

@@ -4,8 +4,12 @@ LINK := g++ -Wall
 GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
 GTK_LIBS := $(shell pkg-config --libs gtk+-3.0)
 
-NCURSES_CFLAGS := $(shell pkg-config --cflags ncurses)
-NCURSES_LIBS := $(shell pkg-config --libs ncurses)
+CURSES_CFLAGS := $(shell pkg-config --cflags ncurses)
+CURSES_LIBS := $(shell pkg-config --libs ncurses)
+ifdef OS
+	CURSES_CFLAGS := -D_XOPEN_SOURCE=600 -I/mingw64/include/pdcurses
+	CURSES_LIBS := -lpdcurses
+endif
 
 OS_LIBS :=
 ifdef OS
@@ -14,12 +18,12 @@ else
 	OS_LIBS := -pthread
 endif
 
-vim: out/main-vim
 gui: out/main
+vim: out/main-vim
 all: vim gui
 
 out/main-vim: out/cursesui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o out/command_arm.o out/command_open.o out/command_close.o out/command_continue.o out/command_disarm.o out/command_set.o
-	$(LINK) $(NCURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/command_disarm.o out/command_continue.o out/command_arm.o out/command_open.o out/command_close.o out/command_set.o out/cursesui.o out/main.o $(NCURSES_LIBS) $(OS_LIBS)
+	$(LINK) $(CURSES_CFLAGS) -o out/main-vim out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/command_disarm.o out/command_continue.o out/command_arm.o out/command_open.o out/command_close.o out/command_set.o out/cursesui.o out/main.o $(CURSES_LIBS) $(OS_LIBS)
 
 out/main: out/gtkui.o out/math.o out/main.o out/currentstate.o out/connection.o out/config.o out/session.o
 	$(LINK) $(GTK_CFLAGS) -o out/main out/math.o out/config.o out/currentstate.o out/connection.o out/session.o out/gtkui.o out/main.o $(GTK_LIBS) $(OS_LIBS)
@@ -37,7 +41,7 @@ out/gtkui.o: src/ui/gtk.cpp
 	$(COMPILE) $(GTK_CFLAGS) -o out/gtkui.o src/ui/gtk.cpp $(GTK_LIBS)
 
 out/cursesui.o: src/ui/curses.cpp
-	$(COMPILE) $(NCURSES_CFLAGS) -o out/cursesui.o src/ui/curses.cpp $(NCURSES_LIBS)
+	$(COMPILE) $(CURSES_CFLAGS) -o out/cursesui.o src/ui/curses.cpp $(CURSES_LIBS)
 
 out/connection.o: src/connection/Connection.cpp
 	$(COMPILE) -o out/connection.o -pthread src/connection/Connection.cpp -lws2_32
@@ -65,6 +69,5 @@ out/command_disarm.o: src/ui/commands/disarm.cpp
 
 out/command_set.o: src/ui/commands/set.cpp
 	$(COMPILE) -o out/command_set.o src/ui/commands/set.cpp
-
 clean:
 	rm out/*

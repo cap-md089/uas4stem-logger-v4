@@ -12,6 +12,8 @@
 #include <math.h>
 #include <fstream>
 
+#include <stdio.h>
+
 static Connection* dataConnection;
 static CurrentState* currentState;
 static Configuration* config;
@@ -294,20 +296,12 @@ static void toggle_recording(GtkWidget* widget, gpointer data) {
 	}
 }
 
-static void open_charlie_button_click() {
-	dataConnection->open_charlie_bottle();
+static void open_bottle_button_click() {
+	dataConnection->open_balloon_dropper();
 }
 
-static void close_charlie_button_click() {
-	dataConnection->close_charlie_bottle();
-}
-
-static void open_golf_button_click() {
-	dataConnection->open_golf_bottle();
-}
-
-static void close_golf_button_click() {
-	dataConnection->close_golf_bottle();
+static void close_bottle_button_click() {
+	dataConnection->close_balloon_dropper();
 }
 
 static void continue_flight() {
@@ -497,16 +491,6 @@ static int stop_flying_label(gpointer lbl) {
 	return G_SOURCE_REMOVE;
 }
 
-static const char* names[] = {
-	"Battery 1",
-	"Battery 2",
-	"Battery 3",
-	"Battery 4",
-	"Battery A",
-	"Battery B",
-	"Battery C"
-};
-
 static void stop_flying(CurrentState* cs, bool continued) {
 	GObject* obj;
 
@@ -518,12 +502,15 @@ static void stop_flying(CurrentState* cs, bool continued) {
 
 	flight.battery_voltages.push_back(cs->get_battery_voltage());
 	obj = gtk_builder_get_object(builder, "batterySelectID");
-	save_flight(
-		config,
-		&flight,
-		cs->get_battery_timer(),
-		names[gtk_combo_box_get_active((GtkComboBox*)obj)]
-	);
+	if (gtk_combo_box_text_get_active_text((GtkComboBoxText*)obj) != NULL) {
+		save_flight(
+			config,
+			&flight,
+			cs->get_battery_timer(),
+			gtk_combo_box_text_get_active_text((GtkComboBoxText*)obj)
+		);
+		std::cout << "not null" << std::endl;
+	}
 
 	clear_flight(&flight);
 }
@@ -563,6 +550,22 @@ static void update_max_flight_time(gpointer entry) {
 
 	config->set_max_flight_time(time);
 	config->save();
+}
+
+static void clear_battery_log(gpointer button) {
+	GtkTextView* textview = (GtkTextView*)gtk_builder_get_object(builder, "voltageData");
+
+	std::string newtext_string = "";
+	std::string oldtext_string;
+
+	GtkTextIter start_position, end_position;
+	GtkTextBuffer* buffer = gtk_text_view_get_buffer(textview);
+	gtk_text_buffer_get_end_iter(buffer, &end_position);
+	gtk_text_buffer_get_start_iter(buffer, &start_position);
+	char* oldtext = (char*)gtk_text_buffer_get_text(buffer, (const GtkTextIter*)&start_position, (const GtkTextIter*)&end_position, true);
+	oldtext_string = oldtext;
+	std::string text_to_set = newtext_string;
+	gtk_text_buffer_set_text(buffer, text_to_set.data(), -1);
 }
 
 static void update_scrabble_box(gpointer s_entry) {
@@ -643,17 +646,11 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 	obj = gtk_builder_get_object(builder, "startStopRecording");
 	g_signal_connect(obj, "clicked", G_CALLBACK(toggle_recording), NULL);
 
-	obj = gtk_builder_get_object(builder, "openCharlie");
-	g_signal_connect(obj, "clicked", G_CALLBACK(open_charlie_button_click), NULL);
+	obj = gtk_builder_get_object(builder, "closeDropper");
+	g_signal_connect(obj, "clicked", G_CALLBACK(close_bottle_button_click), NULL);
 
-	obj = gtk_builder_get_object(builder, "openGolf");
-	g_signal_connect(obj, "clicked", G_CALLBACK(open_golf_button_click), NULL);
-
-	obj = gtk_builder_get_object(builder, "closeCharlie");
-	g_signal_connect(obj, "clicked", G_CALLBACK(close_charlie_button_click), NULL);
-
-	obj = gtk_builder_get_object(builder, "closeGolf");
-	g_signal_connect(obj, "clicked", G_CALLBACK(close_golf_button_click), NULL);
+	obj = gtk_builder_get_object(builder, "openDropper");
+	g_signal_connect(obj, "clicked", G_CALLBACK(open_bottle_button_click), NULL);
 
 	obj = gtk_builder_get_object(builder, "toggleArmButton");
 	g_signal_connect(obj, "clicked", G_CALLBACK(toggle_arm_button_click), NULL);
@@ -683,6 +680,9 @@ int start_gui(int argc, char** argv, CurrentState* cs, std::vector<std::string>*
 
 	obj = gtk_builder_get_object(builder, "generateFlightPlan");
 	g_signal_connect(obj, "clicked", G_CALLBACK(generate_flight_plan), NULL);
+
+	obj = gtk_builder_get_object(builder, "clearBatteryLog");
+	g_signal_connect(obj, "clicked", G_CALLBACK(clear_battery_log), NULL);
 
 	obj = gtk_builder_get_object(builder, "scrabbleInputsEntry");
 	g_signal_connect(obj, "changed", G_CALLBACK(update_scrabble_box), NULL);

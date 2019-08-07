@@ -135,8 +135,12 @@ double Matrix3D::get(int ix, int iy) {
 }
 
 Matrix3D* Matrix3D::multiply(Matrix3D* other) {
-	double** _d = (double**)other->data;
+	auto _d = other->data;
 	double** nd = new double*[3];
+
+	nd[0] = new double[3];
+	nd[1] = new double[3];
+	nd[2] = new double[3];
 
 	nd[0][0] = data[0][0] * _d[0][0] + data[0][1] * _d[1][0] + data[0][2] * _d[2][0];
 	nd[0][1] = data[0][0] * _d[0][1] + data[0][1] * _d[1][1] + data[0][2] * _d[2][1];
@@ -149,10 +153,11 @@ Matrix3D* Matrix3D::multiply(Matrix3D* other) {
 	nd[2][2] = data[2][0] * _d[0][2] + data[2][1] * _d[1][2] + data[2][2] * _d[2][2];
 
 	Matrix3D* result = new Matrix3D(nd);
-	delete nd[0];
-	delete nd[1];
-	delete nd[2];
-	delete nd;
+	delete[] nd[0];
+	delete[] nd[1];
+	delete[] nd[2];
+	delete[] nd;
+
 	return result;
 }
 
@@ -171,8 +176,6 @@ void get_xy_view_of_uav(
 	double lat, double lng,
 	double right, double forward
 ) {
-	std::cout << std::endl;
-
 	*x = lat;
 	*y = lng;
 
